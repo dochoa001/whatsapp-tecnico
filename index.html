@@ -1,0 +1,1581 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
+<title>WhatsApp técnico para Atom</title>
+<meta name="description" content="Presentación interactiva sobre WhatsApp Business app, Cloud API, coexistencia, ventana de 24 horas, plantillas, Flows y cambio de proveedor.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&family=Instrument+Sans:wght@400..700&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* Concepto: un hilo de chat que se recorre pantalla por pantalla. Cada bloque es una "conversación" a pantalla completa,
+   con burbujas, palomitas de leído y fondo punteado de chat como lenguaje visual. */
+:root{
+  --paper:#EDF2EE; --paper-2:#E2EAE4; --surface:#FAFCFA; --ink:#11241F; --muted:#526760; --line:#CFDCD4;
+  --accent:#0B7350; --on-accent:#F4FBF7; --accent-soft:#D3EEDF; --bubble-out:#D7F5DB;
+  --warn:#9A4A14; --warn-soft:#F9E3D2; --tick:#1B64A2; --tick-soft:#DCEBF8; --bad:#B3261E; --bad-soft:#F8DEDB;
+  --night:#0C1D19; --night-2:#15302A; --night-line:#244A3F; --night-fg:#E5F1EB; --night-muted:#A3BFB4; --night-accent:#46D693; --night-tick:#8CCBF7;
+  --shadow:0 1px 0 rgba(17,36,31,.05),0 10px 26px -14px rgba(17,36,31,.30);
+  --display:'Bricolage Grotesque','Trebuchet MS',sans-serif;
+  --body:'Instrument Sans','Segoe UI',Arial,sans-serif;
+  --mono:'JetBrains Mono','Courier New',monospace;
+  --t-hero:clamp(2.5rem,6.2vw,5.4rem); --t-h2:clamp(1.85rem,3.4vw,3rem); --t-h3:clamp(1.1rem,1.5vw,1.3rem); --t-body:1.0625rem; --t-label:.76rem;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --paper:#0E1916; --paper-2:#121F1B; --surface:#16241F; --ink:#E3EEE8; --muted:#9AB1A8; --line:#263B34;
+    --accent:#3FCB8B; --on-accent:#06140F; --accent-soft:#163A2B; --bubble-out:#1B4332;
+    --warn:#F09A5E; --warn-soft:#3A2517; --tick:#62B4F0; --tick-soft:#15304A; --bad:#F2918A; --bad-soft:#3B1D1B;
+    --night:#07110E; --night-2:#10221C; --night-line:#1F3F35; --night-fg:#E5F1EB; --night-muted:#9DBAAF; --night-accent:#46D693; --night-tick:#8CCBF7;
+    --shadow:0 1px 0 rgba(0,0,0,.35),0 12px 28px -14px rgba(0,0,0,.7);
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --paper:#0E1916; --paper-2:#121F1B; --surface:#16241F; --ink:#E3EEE8; --muted:#9AB1A8; --line:#263B34;
+  --accent:#3FCB8B; --on-accent:#06140F; --accent-soft:#163A2B; --bubble-out:#1B4332;
+  --warn:#F09A5E; --warn-soft:#3A2517; --tick:#62B4F0; --tick-soft:#15304A; --bad:#F2918A; --bad-soft:#3B1D1B;
+  --night:#07110E; --night-2:#10221C; --night-line:#1F3F35; --night-fg:#E5F1EB; --night-muted:#9DBAAF; --night-accent:#46D693; --night-tick:#8CCBF7;
+  --shadow:0 1px 0 rgba(0,0,0,.35),0 12px 28px -14px rgba(0,0,0,.7);
+  color-scheme:dark;
+}
+*,*::before,*::after{box-sizing:border-box}
+html{scroll-snap-type:y proximity;scroll-behavior:smooth}
+body{background:var(--paper);color:var(--ink);font-family:var(--body);font-size:var(--t-body);line-height:1.55;-webkit-font-smoothing:antialiased}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:60;background:var(--night)}
+h1,h2,h3{font-family:var(--display);line-height:1.05;letter-spacing:-.02em;text-wrap:balance;margin:0;font-weight:700}
+p{margin:0}
+ul{margin:0}
+a{color:var(--accent)}
+.night a{color:var(--night-accent)}
+:focus-visible{outline:3px solid var(--tick);outline-offset:2px}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+.ic{width:26px;height:26px;flex:none}
+
+/* ---------- Barra superior estilo chat ---------- */
+.topbar{position:fixed;top:env(safe-area-inset-top,0px);left:0;right:0;z-index:50;background:var(--night);color:var(--night-fg);padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.topbar-in{height:60px;max-width:1180px;margin-inline:auto;display:flex;align-items:center;gap:12px}
+.avatar{width:38px;height:38px;border-radius:50%;background:var(--night-accent);color:var(--night);display:grid;place-items:center;flex:none}
+.avatar .ic{width:20px;height:20px}
+.who{display:flex;flex-direction:column;min-width:0;flex:1}
+.who strong{font-family:var(--display);font-size:1.02rem;font-weight:700;letter-spacing:-.01em;line-height:1.2}
+.who span{font-size:.8rem;color:var(--night-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.counter{font-family:var(--mono);font-size:.82rem;color:var(--night-muted);font-variant-numeric:tabular-nums;white-space:nowrap}
+.navbtn{width:38px;height:38px;border-radius:50%;border:1px solid var(--night-line);background:transparent;color:var(--night-fg);display:grid;place-items:center;cursor:pointer;flex:none}
+.navbtn:hover{background:var(--night-2)}
+.navbtn .ic{width:18px;height:18px}
+.progress{position:absolute;left:0;bottom:0;height:3px;width:100%;background:var(--night-2)}
+.progress i{display:block;height:100%;width:var(--p,0%);background:var(--night-accent);transition:width .35s ease}
+.dots{position:fixed;right:max(14px,env(safe-area-inset-right,0px));top:50%;transform:translateY(-50%);z-index:40;display:none;flex-direction:column;gap:7px}
+@media (min-width:1340px){.dots{display:flex}}
+.dots button{width:8px;height:8px;border-radius:99px;border:0;padding:0;background:color-mix(in srgb,var(--muted) 45%,transparent);cursor:pointer;transition:height .25s,background .25s}
+.dots button[aria-current="true"]{height:22px;background:var(--accent)}
+body.on-night .dots button{background:color-mix(in srgb,var(--night-muted) 45%,transparent)}
+body.on-night .dots button[aria-current="true"]{background:var(--night-accent)}
+
+/* ---------- Pantallas ---------- */
+.slide{position:relative;min-height:100svh;display:flex;flex-direction:column;justify-content:center;scroll-snap-align:start;
+  padding-block:calc(96px + env(safe-area-inset-top,0px)) 56px;
+  padding-left:max(20px,env(safe-area-inset-left,0px));padding-right:max(20px,env(safe-area-inset-right,0px));
+  overflow-x:clip;background-color:var(--paper);
+  background-image:radial-gradient(color-mix(in srgb,var(--accent) 9%,transparent) 1.1px,transparent 1.6px);background-size:24px 24px}
+.slide.alt{background-color:var(--paper-2)}
+.slide.night{background-color:var(--night);color:var(--night-fg);background-image:radial-gradient(color-mix(in srgb,var(--night-accent) 9%,transparent) 1.1px,transparent 1.6px)}
+.wrap{width:100%;max-width:1180px;margin-inline:auto;display:flex;flex-direction:column;gap:26px;position:relative;z-index:1}
+.head{display:flex;flex-direction:column;gap:14px}
+.eyebrow{align-self:flex-start;display:inline-flex;gap:.55em;align-items:center;font-size:var(--t-label);font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);background:var(--surface);border:1px solid var(--line);padding:.45em .9em;border-radius:8px;box-shadow:var(--shadow)}
+.eyebrow b{color:var(--accent);font-weight:700}
+.night .eyebrow{background:var(--night-2);border-color:var(--night-line);color:var(--night-muted)}
+.night .eyebrow b{color:var(--night-accent)}
+.title{font-size:var(--t-h2);font-weight:750;max-width:24ch}
+.lede{font-size:1.14rem;color:var(--muted);max-width:64ch}
+.night .lede{color:var(--night-muted)}
+.row{display:flex;flex-wrap:wrap;gap:12px;align-items:center}
+.small{font-size:.9rem;color:var(--muted)}
+.night .small{color:var(--night-muted)}
+kbd{font-family:var(--mono);font-size:.78rem;padding:.15em .45em;border-radius:5px;border:1px solid var(--night-line);background:var(--night-2);color:var(--night-fg)}
+
+/* ---------- Burbujas ---------- */
+.bubble{position:relative;background:var(--surface);color:var(--ink);border-radius:16px 16px 16px 4px;padding:10px 14px 6px;box-shadow:var(--shadow);max-width:36ch;font-size:.97rem;align-self:flex-start}
+.bubble.out{background:var(--bubble-out);border-radius:16px 16px 4px 16px;align-self:flex-end}
+.meta{display:flex;justify-content:flex-end;gap:4px;align-items:center;font-size:.7rem;color:var(--muted);margin-top:2px;font-variant-numeric:tabular-nums}
+.ticks{width:16px;height:10px;color:var(--tick)}
+.tbtns{display:flex;flex-direction:column;margin:8px -14px -6px;border-top:1px solid var(--line)}
+.tbtns span{padding:8px;text-align:center;color:var(--tick);font-weight:600;font-size:.9rem}
+.tbtns span+span{border-top:1px solid var(--line)}
+.typing{align-self:flex-start;background:var(--surface);border-radius:16px 16px 16px 4px;padding:12px 14px;display:flex;gap:4px;box-shadow:var(--shadow)}
+.typing i{width:7px;height:7px;border-radius:50%;background:var(--muted);animation:blink 1.2s infinite}
+.typing i:nth-child(2){animation-delay:.2s}.typing i:nth-child(3){animation-delay:.4s}
+@keyframes blink{0%,60%,100%{opacity:.3;transform:none}30%{opacity:1;transform:translateY(-3px)}}
+
+/* ---------- Tarjetas y chips ---------- */
+.grid{display:grid;gap:14px}
+.g2{grid-template-columns:repeat(2,minmax(0,1fr))}
+.g3{grid-template-columns:repeat(3,minmax(0,1fr))}
+.g4{grid-template-columns:repeat(4,minmax(0,1fr))}
+@media (max-width:900px){.g3,.g4{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:600px){.g2,.g3,.g4{grid-template-columns:1fr}}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:18px 20px;display:flex;flex-direction:column;gap:8px;min-width:0}
+.card h3{font-size:var(--t-h3)}
+.card p{color:var(--muted);font-size:.97rem}
+.card .ic{color:var(--accent)}
+.night .card{background:var(--night-2);border-color:var(--night-line)}
+.night .card h3{color:var(--night-fg)}
+.night .card p{color:var(--night-muted)}
+.night .card .ic{color:var(--night-accent)}
+.tag{display:inline-flex;align-items:center;gap:7px;align-self:flex-start;font-size:var(--t-label);font-weight:700;letter-spacing:.08em;text-transform:uppercase;padding:.32em .75em;border-radius:99px;background:var(--accent-soft);color:var(--accent)}
+.tag.warn{background:var(--warn-soft);color:var(--warn)}
+.tag.info{background:var(--tick-soft);color:var(--tick)}
+.chip{display:inline-flex;align-items:center;gap:6px;font-size:.78rem;font-weight:700;padding:.32em .75em;border-radius:99px;white-space:nowrap}
+.chip.ok{background:var(--accent-soft);color:var(--accent)}
+.chip.chg{background:var(--warn-soft);color:var(--warn)}
+.chip.lost{background:var(--bad-soft);color:var(--bad)}
+.chip.info{background:var(--tick-soft);color:var(--tick)}
+.callout{display:flex;gap:12px;align-items:flex-start;border-radius:14px;padding:14px 18px;background:var(--accent-soft);color:var(--ink)}
+.callout.warn{background:var(--warn-soft)}
+.callout .ic{color:var(--accent);width:24px;height:24px}
+.callout.warn .ic{color:var(--warn)}
+.pulse{width:9px;height:9px;border-radius:50%;background:currentColor;animation:ping 1.8s infinite}
+@keyframes ping{0%{box-shadow:0 0 0 0 color-mix(in srgb,currentColor 55%,transparent)}70%,100%{box-shadow:0 0 0 9px transparent}}
+
+/* ---------- Botones y segmentos ---------- */
+.btn{display:inline-flex;align-items:center;gap:8px;font:600 .95rem/1 var(--body);padding:.75em 1.15em;border-radius:999px;border:1px solid var(--line);background:var(--surface);color:var(--ink);cursor:pointer;text-decoration:none;transition:transform .15s,background .2s,border-color .2s}
+.btn:hover{transform:translateY(-1px);border-color:var(--accent)}
+.btn.primary{background:var(--accent);color:var(--on-accent);border-color:transparent}
+.night .btn.primary{background:var(--night-accent);color:var(--night)}
+.night .btn{background:var(--night-2);color:var(--night-fg);border-color:var(--night-line)}
+.btn .ic{width:18px;height:18px}
+.btn.sm{font-size:.86rem;padding:.6em .95em}
+.seg{display:inline-flex;flex-wrap:wrap;gap:4px;padding:5px;background:var(--surface);border:1px solid var(--line);border-radius:999px;align-self:flex-start;max-width:100%}
+.seg button{border:0;background:transparent;color:var(--muted);font:600 .92rem/1 var(--body);padding:.68em 1.05em;border-radius:999px;cursor:pointer;transition:background .2s,color .2s}
+.seg button:hover{color:var(--ink)}
+.seg button[aria-pressed="true"]{background:var(--accent);color:var(--on-accent)}
+.night .seg{background:var(--night-2);border-color:var(--night-line)}
+.night .seg button{color:var(--night-muted)}
+.night .seg button[aria-pressed="true"]{background:var(--night-accent);color:var(--night)}
+.fade-swap{animation:swap .4s ease}
+@keyframes swap{from{opacity:0;transform:translateY(8px)}}
+
+/* ---------- Animación de entrada ---------- */
+.js .slide.pre .rv{opacity:0;transform:translateY(18px)}
+.slide .rv{transition:opacity .6s ease,transform .7s cubic-bezier(.2,.7,.2,1);transition-delay:calc(var(--i,0) * 70ms)}
+
+/* ---------- Portada ---------- */
+.cover-grid{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,.85fr);gap:48px;align-items:center}
+@media (max-width:900px){.cover-grid{grid-template-columns:1fr;gap:36px}}
+.cover-text{display:flex;flex-direction:column;gap:22px}
+.hero{font-size:var(--t-hero);font-weight:800;letter-spacing:-.04em;line-height:.96}
+.hero .hl{color:var(--night-accent);background:linear-gradient(transparent 84%,color-mix(in srgb,var(--night-accent) 35%,transparent) 0) no-repeat;background-size:0% 100%;animation:mark 1.1s .5s cubic-bezier(.3,.7,.2,1) forwards}
+@keyframes mark{to{background-size:100% 100%}}
+.glow{position:absolute;top:-25%;right:-15%;width:70vmax;height:70vmax;border-radius:50%;background:radial-gradient(closest-side,color-mix(in srgb,var(--night-accent) 20%,transparent),transparent);animation:drift 16s ease-in-out infinite alternate;pointer-events:none;z-index:0}
+.glow.b{top:auto;bottom:-40%;right:auto;left:-25%;background:radial-gradient(closest-side,color-mix(in srgb,var(--night-tick) 14%,transparent),transparent);animation-duration:21s}
+@keyframes drift{to{transform:translate(-10vmax,12vmax) scale(1.15)}}
+.phone{width:100%;max-width:380px;justify-self:center;border-radius:34px;background:var(--night-2);border:1px solid var(--night-line);padding:10px;box-shadow:0 30px 60px -30px rgba(0,0,0,.6)}
+.phone-head{display:flex;align-items:center;gap:10px;padding:8px 10px 12px;color:var(--night-fg)}
+.phone-head .avatar{width:34px;height:34px}
+.phone-head strong{font-size:.95rem;display:block;line-height:1.2}
+.phone-head small{display:block;font-size:.74rem;color:var(--night-muted)}
+.chatbg{border-radius:24px;background-color:var(--paper);background-image:radial-gradient(color-mix(in srgb,var(--accent) 11%,transparent) 1px,transparent 1.5px);background-size:18px 18px;padding:14px 12px;display:flex;flex-direction:column;gap:8px;color:var(--ink)}
+.cover .chatbg{min-height:400px;justify-content:flex-end}
+.seq>*{animation:pop .5s cubic-bezier(.2,.8,.2,1.15) both;animation-delay:var(--d,0s)}
+@keyframes pop{from{opacity:0;transform:translateY(12px) scale(.95)}}
+.daypill{align-self:center;font-size:.7rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);background:var(--surface);padding:.35em .8em;border-radius:7px}
+
+/* ---------- Agenda ---------- */
+.agenda{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+@media (max-width:900px){.agenda{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:560px){.agenda{grid-template-columns:1fr}}
+.ag{display:flex;flex-direction:column;gap:3px;text-decoration:none;color:inherit;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:14px 18px;transition:transform .2s,border-color .2s,box-shadow .2s}
+.ag:hover{transform:translateY(-3px);border-color:var(--accent);box-shadow:var(--shadow)}
+.ag .n{font-family:var(--mono);font-size:.78rem;color:var(--accent);font-weight:600}
+.ag strong{font-family:var(--display);font-size:1.22rem;font-weight:700;letter-spacing:-.01em}
+.ag span{color:var(--muted);font-size:.92rem}
+.timebar{display:flex;height:12px;border-radius:99px;overflow:hidden;gap:3px}
+.timebar i{height:100%;background:var(--accent);transform-origin:left;transition:transform .9s cubic-bezier(.2,.7,.2,1);transition-delay:calc(var(--k,0) * 80ms + .2s)}
+.timebar i:nth-child(odd){background:color-mix(in srgb,var(--accent) 55%,var(--paper))}
+.js .slide.pre .timebar i{transform:scaleX(0)}
+.timebar-legend{display:flex;justify-content:space-between;font-family:var(--mono);font-size:.78rem;color:var(--muted)}
+
+/* ---------- Comparativa ---------- */
+.tablewrap{overflow-x:auto;border:1px solid var(--line);border-radius:14px;background:var(--surface)}
+table.cmp{width:100%;border-collapse:collapse;min-width:660px;font-size:.98rem}
+.cmp th,.cmp td{padding:12px 16px;text-align:left;border-bottom:1px solid var(--line);vertical-align:top}
+.cmp tbody tr:last-child th,.cmp tbody tr:last-child td{border-bottom:0}
+.cmp thead th{font-family:var(--display);font-size:1.08rem;background:var(--paper-2)}
+.cmp tbody th{font-weight:600;color:var(--muted);font-size:.88rem;white-space:nowrap}
+.cmp [data-col]{transition:background .3s,color .3s}
+.cmp[data-sel] td[data-col]{color:var(--muted)}
+.cmp[data-sel="wa"] [data-col="wa"],.cmp[data-sel="app"] [data-col="app"],.cmp[data-sel="api"] [data-col="api"]{background:var(--accent-soft);color:var(--ink)}
+.cmp[data-sel="wa"] thead [data-col="wa"],.cmp[data-sel="app"] thead [data-col="app"],.cmp[data-sel="api"] thead [data-col="api"]{color:var(--accent)}
+
+/* ---------- Actores ---------- */
+.flow{position:relative;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:18px}
+.flow .track{position:absolute;left:12.5%;right:12.5%;top:46px;height:2px;background:repeating-linear-gradient(90deg,var(--accent) 0 8px,transparent 8px 15px);opacity:.55}
+.packet{position:absolute;top:35px;left:12.5%;width:30px;height:22px;border-radius:10px 10px 10px 3px;background:var(--accent);box-shadow:var(--shadow);animation:travel 7s ease-in-out infinite;z-index:2}
+@keyframes travel{0%{left:12.5%;background:var(--accent)}42%{left:calc(87.5% - 30px);background:var(--accent)}50%{left:calc(87.5% - 30px);background:var(--tick);border-radius:10px 10px 3px 10px}92%{left:12.5%;background:var(--tick);border-radius:10px 10px 3px 10px}100%{left:12.5%;background:var(--accent)}}
+.node{position:relative;z-index:1;display:flex;flex-direction:column;align-items:center;gap:8px;text-align:center;background:transparent;border:0;color:inherit;font:inherit;cursor:pointer;padding:0}
+.node .disc{width:92px;height:92px;border-radius:50%;display:grid;place-items:center;background:var(--surface);border:2px solid var(--line);color:var(--accent);transition:transform .25s,border-color .25s,background .25s}
+.node .disc .ic{width:36px;height:36px}
+.node strong{font-family:var(--display);font-size:1.2rem}
+.node small{color:var(--muted);font-size:.86rem;max-width:22ch}
+.node:hover .disc{border-color:var(--accent)}
+.node[aria-pressed="true"] .disc{border-color:var(--accent);background:var(--accent-soft);transform:scale(1.07)}
+@media (max-width:700px){.flow{grid-template-columns:repeat(2,minmax(0,1fr));row-gap:24px}.flow .track,.packet{display:none}}
+.detail{align-self:stretch;max-width:none;font-size:1.02rem;padding:16px 18px 10px}
+.detail strong{font-family:var(--display);font-size:1.1rem}
+
+/* ---------- Cuentas ---------- */
+.split{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(0,1fr);gap:28px;align-items:start}
+@media (max-width:900px){.split{grid-template-columns:1fr}}
+.portfolio{border:2px dashed color-mix(in srgb,var(--muted) 50%,transparent);border-radius:20px;padding:20px;display:flex;flex-direction:column;background:color-mix(in srgb,var(--surface) 50%,transparent)}
+.plabel{font-size:var(--t-label);letter-spacing:.12em;text-transform:uppercase;font-weight:700;color:var(--muted);margin-bottom:14px}
+.acc{border-radius:14px;padding:16px 18px;display:flex;flex-direction:column;gap:6px;background:var(--surface);border:1px solid var(--line)}
+.acc.wa{background:var(--accent-soft);border:2px solid var(--accent)}
+.acc.waba{background:var(--warn-soft);border:2px solid var(--warn)}
+.acc h3{font-size:1.15rem}
+.acc ul{padding-left:1.1em;color:var(--muted);font-size:.93rem}
+.acc .small{font-size:.86rem}
+.links{display:block;width:100%;height:58px}
+.links path{fill:none;stroke:var(--accent);stroke-width:2;stroke-dasharray:6 6;animation:dash 1.1s linear infinite}
+@keyframes dash{to{stroke-dashoffset:-24}}
+.msgrow{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+@media (max-width:480px){.msgrow{grid-template-columns:1fr}.links{display:none}.msgrow{margin-top:14px}}
+.notes{display:flex;flex-direction:column;gap:12px}
+.note{border-top:2px solid var(--line);padding-top:12px;display:flex;flex-direction:column;gap:4px}
+.note b{font-size:var(--t-label);letter-spacing:.1em;text-transform:uppercase;color:var(--accent)}
+.note.w b{color:var(--warn)}
+.note p{color:var(--muted)}
+
+/* ---------- Medidor de calidad ---------- */
+.gauge{display:grid;grid-template-columns:auto minmax(0,1fr);gap:22px;align-items:center}
+@media (max-width:560px){.gauge{grid-template-columns:1fr}}
+.gauge svg{width:190px;max-width:100%;height:auto}
+.needle{transform-origin:90px 90px;transition:transform .8s cubic-bezier(.3,1.5,.5,1)}
+.arc{fill:none;stroke-width:14}
+.gauge-txt{display:flex;flex-direction:column;gap:8px}
+</style>
+</head>
+<body>
+<style>
+/* ---------- Pasos, checklist ---------- */
+.es{background:var(--surface);border:1px solid var(--line);border-radius:18px;box-shadow:var(--shadow);overflow:hidden}
+.es-top{display:flex;align-items:center;gap:10px;padding:12px 16px;border-bottom:1px solid var(--line);font-weight:600;font-size:.92rem}
+.es-top i{width:10px;height:10px;border-radius:50%;background:var(--line)}
+.es ol{list-style:none;margin:0;padding:14px 16px;display:flex;flex-direction:column;gap:6px}
+.es li{display:flex;align-items:center;gap:12px;padding:9px 10px;border-radius:10px;color:var(--muted);transition:background .3s,color .3s}
+.es li .num{width:28px;height:28px;font-size:.8rem}
+.es li.on{background:var(--accent-soft);color:var(--ink)}
+.es li.on .num{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
+.es li.done .num{border-color:var(--accent);color:var(--accent)}
+.num{width:34px;height:34px;border-radius:50%;display:grid;place-items:center;font-family:var(--mono);font-weight:600;font-size:.88rem;background:var(--surface);border:1.5px solid var(--line);flex:none;transition:background .25s,color .25s,border-color .25s}
+.stepper{display:grid;grid-template-columns:minmax(0,.9fr) minmax(0,1.1fr);gap:28px;align-items:start}
+@media (max-width:860px){.stepper{grid-template-columns:1fr}}
+.steps{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:4px}
+.step-btn{width:100%;display:flex;align-items:center;gap:14px;padding:9px 14px;border-radius:12px;border:1px solid transparent;background:transparent;color:inherit;font:inherit;text-align:left;cursor:pointer}
+.step-btn:hover{background:color-mix(in srgb,var(--surface) 70%,transparent)}
+.step-btn.done .num{background:var(--accent-soft);border-color:var(--accent);color:var(--accent)}
+.step-btn[aria-current="step"]{background:var(--surface);border-color:var(--line);box-shadow:var(--shadow)}
+.step-btn[aria-current="step"] .num{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
+.step-btn strong{font-weight:600}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:24px;display:flex;flex-direction:column;gap:14px;box-shadow:var(--shadow);min-width:0}
+.panel h3{font-size:1.5rem}
+.crumb{font-family:var(--mono);font-size:.82rem;color:var(--accent);background:var(--accent-soft);padding:7px 10px;border-radius:8px;align-self:flex-start;overflow-wrap:anywhere}
+.bar{height:6px;border-radius:99px;background:var(--line);overflow:hidden}
+.bar i{display:block;height:100%;width:var(--w,0%);background:var(--accent);transition:width .45s}
+.checks{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+@media (max-width:720px){.checks{grid-template-columns:1fr}}
+.chk{display:flex;gap:14px;align-items:flex-start;text-align:left;padding:16px 18px;border-radius:14px;background:var(--surface);border:1px solid var(--line);color:inherit;font:inherit;cursor:pointer;transition:border-color .2s,background .2s}
+.chk:hover{border-color:var(--accent)}
+.chk .box{width:26px;height:26px;border-radius:8px;border:2px solid var(--line);display:grid;place-items:center;flex:none;transition:all .2s;color:transparent;margin-top:1px}
+.chk .box svg{width:16px;height:16px}
+.chk[aria-pressed="true"]{border-color:var(--accent);background:color-mix(in srgb,var(--accent-soft) 55%,var(--surface))}
+.chk[aria-pressed="true"] .box{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
+.chk .lbl{display:flex;flex-direction:column;gap:4px}
+.chk .lbl em{font-style:normal;font-size:.78rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--warn)}
+.ring{display:flex;align-items:center;gap:14px}
+.ring svg{width:62px;height:62px;transform:rotate(-90deg)}
+.ring circle{fill:none;stroke-width:7}
+.ring .bg{stroke:var(--line)}
+.ring .fg{stroke:var(--accent);stroke-linecap:round;transition:stroke-dashoffset .45s}
+.ring strong{font-family:var(--display);font-size:1.5rem;font-variant-numeric:tabular-nums}
+
+/* ---------- Coexistencia ---------- */
+.coex{position:relative;display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);gap:30px;align-items:center}
+@media (max-width:820px){.coex{grid-template-columns:1fr}}
+.cnode{position:relative;z-index:2;background:var(--night-2);border:1px solid var(--night-line);border-radius:18px;padding:20px;display:flex;flex-direction:column;gap:8px}
+.cnode .ic{color:var(--night-accent);width:32px;height:32px}
+.cnode h3{font-size:1.35rem}
+.cnode p{color:var(--night-muted);font-size:.96rem}
+.numc{position:relative;z-index:2;width:190px;height:190px;border-radius:50%;background:var(--night-accent);color:var(--night);display:grid;place-items:center;text-align:center;font-family:var(--display);font-weight:800;font-size:1.35rem;line-height:1.1;padding:26px;justify-self:center}
+.numc::before,.numc::after{content:"";position:absolute;inset:-8px;border-radius:50%;border:2px solid var(--night-accent);opacity:0;animation:ringout 2.8s ease-out infinite}
+.numc::after{animation-delay:1.4s}
+@keyframes ringout{0%{transform:scale(.92);opacity:.7}100%{transform:scale(1.4);opacity:0}}
+.fly{position:absolute;z-index:1;font-family:var(--mono);font-size:.74rem;font-weight:600;padding:5px 10px;border-radius:10px 10px 10px 3px;background:var(--night-accent);color:var(--night);white-space:nowrap}
+.fly.r{top:30%;animation:flyr 5s ease-in-out infinite}
+.fly.l{top:62%;border-radius:10px 10px 3px 10px;background:var(--night-tick);animation:flyl 5s 2.5s ease-in-out infinite;opacity:0}
+@keyframes flyr{0%{left:18%;opacity:0}12%{opacity:1}88%{opacity:1}100%{left:74%;opacity:0}}
+@keyframes flyl{0%{left:74%;opacity:0}12%{opacity:1}88%{opacity:1}100%{left:18%;opacity:0}}
+@media (max-width:820px){.fly{display:none}}
+.feats{display:flex;flex-direction:column;border:1px solid var(--line);border-radius:14px;overflow:hidden;background:var(--surface)}
+.feat{display:grid;grid-template-columns:minmax(0,1fr) 150px minmax(0,1.8fr);gap:16px;align-items:center;padding:12px 18px;border-top:1px solid var(--line)}
+.feat:first-child{border-top:0}
+.feat strong{font-weight:600}
+.feat p{color:var(--muted);font-size:.95rem}
+@media (max-width:720px){.feat{grid-template-columns:minmax(0,1fr) auto}.feat p{grid-column:1/-1}}
+.tile{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:20px;display:flex;flex-direction:column;gap:6px;min-width:0}
+.tile .big{font-family:var(--display);font-weight:800;font-size:clamp(2rem,3.4vw,2.8rem);line-height:1;letter-spacing:-.03em;color:var(--accent);font-variant-numeric:tabular-nums}
+.tile.w .big{color:var(--warn)}
+.tile strong{font-size:1.05rem}
+.tile p{color:var(--muted);font-size:.93rem}
+.diag{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);gap:26px;align-items:start}
+@media (max-width:860px){.diag{grid-template-columns:1fr}}
+.qs{display:flex;flex-direction:column;gap:8px}
+.q{display:flex;justify-content:space-between;align-items:center;gap:16px;padding:12px 14px 12px 16px;border-radius:12px;background:var(--surface);border:1px solid var(--line)}
+.q span{min-width:0}
+.sw{position:relative;width:98px;height:36px;flex:none;border-radius:99px;border:1px solid var(--line);background:var(--paper-2);cursor:pointer;font:700 .82rem/1 var(--body);color:var(--muted);display:grid;grid-template-columns:1fr 1fr;align-items:center;text-align:center;padding:0}
+.sw::before{content:"";position:absolute;top:3px;left:3px;width:calc(50% - 3px);height:calc(100% - 6px);border-radius:99px;background:var(--accent);transition:transform .25s,background .25s}
+.sw[aria-checked="false"]::before{transform:translateX(100%);background:var(--muted)}
+.sw b{position:relative;z-index:1}
+.sw[aria-checked="true"] b:first-child{color:var(--on-accent)}
+.sw[aria-checked="false"] b:last-child{color:var(--surface)}
+.verdict{background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:22px;display:flex;flex-direction:column;gap:14px;box-shadow:var(--shadow)}
+.scale{position:relative;height:12px;border-radius:99px;background:linear-gradient(90deg,var(--warn),var(--line) 50%,var(--accent))}
+.scale i{position:absolute;top:50%;width:28px;height:28px;border-radius:50%;background:var(--surface);border:3px solid var(--ink);transform:translate(-50%,-50%);left:var(--x,50%);transition:left .55s cubic-bezier(.3,1.4,.5,1)}
+.scale-labels{display:flex;justify-content:space-between;font-size:.8rem;color:var(--muted);font-weight:700;letter-spacing:.04em;text-transform:uppercase}
+.verdict h3{font-size:1.6rem}
+</style>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <symbol id="i-chat" viewBox="0 0 24 24"><path d="M4 5h16v11H9l-5 4z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></symbol>
+    <symbol id="i-user" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-6 8-6s8 2 8 6"/></g></symbol>
+    <symbol id="i-users" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="9" cy="8" r="3.5"/><path d="M2 20c0-3.5 3-5.5 7-5.5s7 2 7 5.5M16 4.6a3.5 3.5 0 0 1 0 6.8M18 14.6c2.4.7 4 2.4 4 5.4"/></g></symbol>
+    <symbol id="i-cloud" viewBox="0 0 24 24"><path d="M7 18h10a4 4 0 0 0 .6-7.96A6 6 0 0 0 6.2 9.3 4.4 4.4 0 0 0 7 18z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></symbol>
+    <symbol id="i-link" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1"/><path d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/></g></symbol>
+    <symbol id="i-db" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.8"><ellipse cx="12" cy="6" rx="7" ry="3"/><path d="M5 6v12c0 1.7 3.1 3 7 3s7-1.3 7-3V6M5 12c0 1.7 3.1 3 7 3s7-1.3 7-3"/></g></symbol>
+    <symbol id="i-phone" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="6.5" y="2.5" width="11" height="19" rx="2.5"/><path d="M10.5 18h3"/></g></symbol>
+    <symbol id="i-shield" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7 3v6c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6z"/><path d="M9 12l2 2 4-4"/></g></symbol>
+    <symbol id="i-gauge" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 17a8 8 0 1 1 16 0"/><path d="M12 17l4-5"/></g></symbol>
+    <symbol id="i-bolt" viewBox="0 0 24 24"><path d="M13 2L5 13h6l-1 9 8-11h-6z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></symbol>
+    <symbol id="i-star" viewBox="0 0 24 24"><path d="M12 3l2.8 6 6.2.4-4.8 4.1 1.6 6.5L12 16.4 6.2 20l1.6-6.5L3 9.4 9.2 9z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></symbol>
+    <symbol id="i-clock" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></g></symbol>
+    <symbol id="i-wallet" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="6" width="18" height="13" rx="2"/><path d="M3 10h18"/><circle cx="16" cy="14.5" r="1.2"/></g></symbol>
+    <symbol id="i-sliders" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/></g></symbol>
+    <symbol id="i-alert" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l10 18H2z"/><path d="M12 10v5M12 18h.01"/></g></symbol>
+    <symbol id="i-code" viewBox="0 0 24 24"><path d="M8 7l-5 5 5 5M16 7l5 5-5 5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-layout" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18M9 9v11"/></g></symbol>
+    <symbol id="i-key" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="8" cy="15" r="4"/><path d="M11 12l9-9M17 6l3 3"/></g></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M8 12l3 3 5-6"/></g></symbol>
+    <symbol id="i-tick" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-send" viewBox="0 0 24 24"><path d="M3 11l18-8-8 18-2-8z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></symbol>
+    <symbol id="i-mega" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"><path d="M3 10v4h4l8 5V5L7 10z"/><path d="M19 9a4 4 0 0 1 0 6"/></g></symbol>
+    <symbol id="i-call" viewBox="0 0 24 24"><path d="M5 4h4l2 5-3 2a11 11 0 0 0 5 5l2-3 5 2v4a2 2 0 0 1-2 2A17 17 0 0 1 3 6a2 2 0 0 1 2-2z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></symbol>
+    <symbol id="i-search" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></g></symbol>
+    <symbol id="i-left" viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-right" viewBox="0 0 24 24"><path d="M9 5l7 7-7 7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-play" viewBox="0 0 24 24"><path d="M8 5v14l11-7z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></symbol>
+    <symbol id="i-reset" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12a8 8 0 1 0 2.4-5.7"/><path d="M4 4v4h4"/></g></symbol>
+    <symbol id="i-ticks" viewBox="0 0 18 11"><path d="M1 6l3 3 6-7M7 9l1 1 8-9" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  </defs>
+</svg>
+
+<header class="topbar">
+  <div class="topbar-in">
+    <span class="avatar" aria-hidden="true"><svg class="ic"><use href="#i-chat"/></svg></span>
+    <div class="who"><strong>WhatsApp técnico</strong><span id="status" aria-live="polite">Portada</span></div>
+    <span class="counter" id="counter">01 / 28</span>
+    <button class="navbtn" id="prev" type="button" aria-label="Pantalla anterior"><svg class="ic"><use href="#i-left"/></svg></button>
+    <button class="navbtn" id="next" type="button" aria-label="Pantalla siguiente"><svg class="ic"><use href="#i-right"/></svg></button>
+  </div>
+  <div class="progress" aria-hidden="true"><i id="prog"></i></div>
+</header>
+<nav class="dots" id="dots" aria-label="Pantallas"></nav>
+
+<main>
+<!-- 01 Portada -->
+<section class="slide night cover" id="inicio" data-title="Portada" data-block="Portada · en línea">
+  <div class="glow" aria-hidden="true"></div><div class="glow b" aria-hidden="true"></div>
+  <div class="wrap cover-grid">
+    <div class="cover-text">
+      <p class="eyebrow"><b>●</b> Preparación técnica · Entrevista Atom</p>
+      <h1 class="hero">WhatsApp,<br><span class="hl">la parte técnica</span></h1>
+      <p class="lede">Business app, API, coexistencia, ventana de 24 horas, plantillas, Flows y cambio de proveedor. Una hora, con ejemplos que se pueden tocar.</p>
+      <div class="row">
+        <a class="btn primary" href="#agenda">Empezar <svg class="ic"><use href="#i-arrow"/></svg></a>
+        <span class="small">Navega con <kbd>←</kbd> <kbd>→</kbd>, la rueda del mouse o deslizando.</span>
+      </div>
+    </div>
+    <div class="phone" role="img" aria-label="Ejemplo de conversación: un cliente pide cita, un bot ofrece horarios y confirma con una plantilla con botones">
+      <div class="phone-head">
+        <span class="avatar" aria-hidden="true"><svg class="ic"><use href="#i-star"/></svg></span>
+        <div><strong>Clínica Aurora</strong><small>Cuenta de empresa</small></div>
+      </div>
+      <div class="chatbg seq">
+        <span class="daypill" style="--d:.1s">Hoy</span>
+        <div class="bubble" style="--d:.35s">Hola, ¿tienen cita para mañana?<div class="meta">10:02</div></div>
+        <div class="bubble out" style="--d:1s">Claro. Tengo 10:00, 12:00 o 16:00. ¿Cuál prefieres?<div class="meta">10:02 <svg class="ticks"><use href="#i-ticks"/></svg></div></div>
+        <div class="bubble" style="--d:1.65s">A las 12:00, porfa<div class="meta">10:03</div></div>
+        <div class="bubble out" style="--d:2.3s">Listo, Ana. Tu cita es mañana a las 12:00 en Sucursal Centro.<div class="meta">10:03 <svg class="ticks"><use href="#i-ticks"/></svg></div><div class="tbtns"><span>Confirmar</span><span>Reagendar</span></div></div>
+        <div class="typing" style="--d:2.9s" aria-hidden="true"><i></i><i></i><i></i></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 02 Agenda -->
+<section class="slide" id="agenda" data-title="Agenda" data-block="Agenda · 60 minutos">
+  <div class="wrap">
+    <div class="head rv">
+      <p class="eyebrow"><b>Agenda</b> 9 bloques</p>
+      <h2 class="title">Una hora, nueve conversaciones</h2>
+    </div>
+    <div class="rv" style="display:flex;flex-direction:column;gap:8px">
+      <div class="timebar" aria-hidden="true">
+        <i style="flex:6;--k:0"></i><i style="flex:6;--k:1"></i><i style="flex:7;--k:2"></i><i style="flex:10;--k:3"></i><i style="flex:6;--k:4"></i><i style="flex:8;--k:5"></i><i style="flex:5;--k:6"></i><i style="flex:6;--k:7"></i><i style="flex:6;--k:8"></i>
+      </div>
+      <div class="timebar-legend"><span>0 min</span><span>30 min</span><span>60 min</span></div>
+    </div>
+    <div class="agenda">
+      <a class="ag rv" href="#tres-whatsapps"><span class="n">01 · 6 min</span><strong>Los 3 WhatsApps</strong><span>Normal, Business app y API</span></a>
+      <a class="ag rv" href="#piezas"><span class="n">02 · 6 min</span><strong>Piezas de Meta</strong><span>Cuentas, verificación y calidad</span></a>
+      <a class="ag rv" href="#dos-caminos"><span class="n">03 · 7 min</span><strong>Conectar la API</strong><span>Directo o con un proveedor</span></a>
+      <a class="ag rv" href="#coexistencia"><span class="n">04 · 10 min</span><strong>Coexistencia</strong><span>Mismo número en app y API</span></a>
+      <a class="ag rv" href="#ventana"><span class="n">05 · 6 min</span><strong>Ventana y precios</strong><span>24 horas y cobro por mensaje</span></a>
+      <a class="ag rv" href="#plantillas"><span class="n">06 · 8 min</span><strong>Plantillas</strong><span>Categorías, partes y errores</span></a>
+      <a class="ag rv" href="#flows"><span class="n">07 · 5 min</span><strong>WhatsApp Flows</strong><span>Formularios dentro del chat</span></a>
+      <a class="ag rv" href="#migracion"><span class="n">08 · 6 min</span><strong>Cambio de proveedor</strong><span>Cómo era antes y cómo es ahora</span></a>
+      <a class="ag rv" href="#atom"><span class="n">09 · 6 min</span><strong>Atom y preguntas</strong><span>Recursos y práctica</span></a>
+    </div>
+  </div>
+</section>
+
+<!-- 03 Novedades -->
+<section class="slide alt" id="novedades" data-title="Lo nuevo" data-block="Antes de empezar · lo nuevo">
+  <div class="wrap">
+    <div class="head rv">
+      <p class="eyebrow"><b>Antes de empezar</b> Novedades 2026</p>
+      <h2 class="title">Tres cambios recientes que hay que saber</h2>
+      <p class="lede">Mucha documentación de terceros todavía no los refleja. Mencionarlos en la entrevista muestra que estás al día.</p>
+    </div>
+    <div class="grid g3">
+      <article class="card rv">
+        <span class="tag warn"><span class="pulse" aria-hidden="true"></span>Sept–oct 2026</span>
+        <h3>Nuevo modelo de cuentas</h3>
+        <p>La WABA se divide en dos: la <b>WhatsApp account</b> (número y perfil, siempre del cliente) y la <b>Messaging account</b> (plantillas, cobro y webhooks, una por proveedor).</p>
+      </article>
+      <article class="card rv">
+        <span class="tag warn"><span class="pulse" aria-hidden="true"></span>Coexistencia</span>
+        <h3>Editar y eliminar ya se puede</h3>
+        <p>Meta ya permite editar y eliminar mensajes en chats 1 a 1 de números en coexistencia. Antes era una de las funciones que se perdían.</p>
+      </article>
+      <article class="card rv">
+        <span class="tag warn"><span class="pulse" aria-hidden="true"></span>15 oct 2026</span>
+        <h3>Embedded Signup v2 y v3 se retiraron</h3>
+        <p>Los proveedores deben usar v4 o v5. En v5 la coexistencia viene activada por defecto.</p>
+      </article>
+    </div>
+  </div>
+</section>
+
+<!-- 04 Tres WhatsApps -->
+<section class="slide" id="tres-whatsapps" data-title="Los 3 WhatsApps" data-block="Bloque 1 · Los 3 WhatsApps">
+  <div class="wrap">
+    <div class="head rv">
+      <p class="eyebrow"><b>Bloque 1</b> Los 3 WhatsApps</p>
+      <h2 class="title">Mismo nombre, tres productos distintos</h2>
+    </div>
+    <div class="seg rv" id="cmp-seg" role="group" aria-label="Resaltar un producto">
+      <button type="button" data-v="wa" aria-pressed="false">WhatsApp</button>
+      <button type="button" data-v="app" aria-pressed="false">Business app</button>
+      <button type="button" data-v="api" aria-pressed="true">API (Business Platform)</button>
+    </div>
+    <div class="tablewrap rv">
+      <table class="cmp" id="cmp" data-sel="api">
+        <thead><tr><th scope="col"><span class="sr">Aspecto</span></th><th scope="col" data-col="wa">WhatsApp</th><th scope="col" data-col="app">Business app</th><th scope="col" data-col="api">Business Platform (API)</th></tr></thead>
+        <tbody>
+          <tr><th scope="row">Para quién</th><td data-col="wa">Personas</td><td data-col="app">Pymes</td><td data-col="api">Empresas medianas y grandes</td></tr>
+          <tr><th scope="row">Dónde vive</th><td data-col="wa">App en el celular</td><td data-col="app">App + hasta 4 dispositivos</td><td data-col="api">Sin app: CRM o plataforma vía API</td></tr>
+          <tr><th scope="row">Varios agentes</th><td data-col="wa">No</td><td data-col="app">Pocos (dispositivos vinculados)</td><td data-col="api">Ilimitados</td></tr>
+          <tr><th scope="row">Automatización</th><td data-col="wa">No</td><td data-col="app">Saludo, ausencia, respuestas rápidas</td><td data-col="api">Chatbots, flujos, integraciones</td></tr>
+          <tr><th scope="row">Envíos masivos</th><td data-col="wa">No</td><td data-col="app">Listas de difusión (máx. 256)</td><td data-col="api">Campañas con plantillas aprobadas</td></tr>
+          <tr><th scope="row">Costo</th><td data-col="wa">Gratis</td><td data-col="app">Gratis</td><td data-col="api">Por mensaje (plantillas)</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="callout rv"><svg class="ic"><use href="#i-chat"/></svg><p id="cmp-sum"><b>En una frase:</b> para empresas que necesitan muchos agentes, bots, campañas e integraciones. No tiene app propia: siempre va con una plataforma como Atom.</p></div>
+  </div>
+</section>
+
+<!-- 05 Actores -->
+<section class="slide alt" id="actores" data-title="Quién es quién" data-block="Bloque 1 · Quién es quién">
+  <div class="wrap">
+    <div class="head rv">
+      <p class="eyebrow"><b>Bloque 1</b> Quién es quién</p>
+      <h2 class="title">Cuatro actores en cada mensaje</h2>
+      <p class="lede">Toca cada actor para ver qué hace. El globo verde es un mensaje del cliente; el azul, la respuesta del negocio.</p>
+    </div>
+    <div class="flow rv" id="flow">
+      <div class="track" aria-hidden="true"></div><div class="packet" aria-hidden="true"></div>
+      <button class="node" type="button" data-k="usuario" aria-pressed="false"><span class="disc"><svg class="ic"><use href="#i-user"/></svg></span><strong>Usuario</strong><small>Su WhatsApp de siempre</small></button>
+      <button class="node" type="button" data-k="meta" aria-pressed="false"><span class="disc"><svg class="ic"><use href="#i-cloud"/></svg></span><strong>Meta</strong><small>Cloud API</small></button>
+      <button class="node" type="button" data-k="proveedor" aria-pressed="true"><span class="disc"><svg class="ic"><use href="#i-link"/></svg></span><strong>Proveedor</strong><small>BSP o Tech Provider (ej. Atom)</small></button>
+      <button class="node" type="button" data-k="negocio" aria-pressed="false"><span class="disc"><svg class="ic"><use href="#i-db"/></svg></span><strong>Negocio</strong><small>CRM, bot o bandeja</small></button>
+    </div>
+    <div class="bubble out detail rv" id="flow-detail" aria-live="polite"><strong>Proveedor</strong><br>Conecta al negocio con la API. El BSP (como Atom) además factura y da soporte; el Tech Provider construye encima y el cliente le paga directo a Meta.<div class="meta">ahora <svg class="ticks"><use href="#i-ticks"/></svg></div></div>
+  </div>
+</section>
+
+<!-- 06 Piezas -->
+<section class="slide" id="piezas" data-title="Cuentas de Meta" data-block="Bloque 2 · Piezas de Meta">
+  <div class="wrap">
+    <div class="head rv">
+      <p class="eyebrow"><b>Bloque 2</b> Piezas de Meta</p>
+      <h2 class="title">Cómo se organizan las cuentas</h2>
+    </div>
+    <div class="seg rv" id="pz-seg" role="group" aria-label="Elegir modelo de cuentas">
+      <button type="button" data-v="antes" aria-pressed="false">Antes: una WABA</button>
+      <button type="button" data-v="ahora" aria-pressed="true">Ahora: cuentas separadas</button>
+    </div>
+    <div class="split">
+      <div class="rv">
+        <div class="portfolio" id="pz-ahora">
+          <p class="plabel">Portafolio de negocio (Business Manager)</p>
+          <div class="acc wa"><h3>WhatsApp account</h3><p class="small">Número, perfil, nombre visible y catálogo. <b>Siempre es del cliente.</b></p></div>
+          <svg class="links" viewBox="0 0 600 58" preserveAspectRatio="none" aria-hidden="true"><path d="M300 0 C300 30 150 28 150 58" vector-effect="non-scaling-stroke"/><path d="M300 0 C300 30 450 28 450 58" vector-effect="non-scaling-stroke"/></svg>
+          <div class="msgrow">
+            <div class="acc"><h3>Messaging account</h3><p class="small">Proveedor A (ej. Atom): plantillas, cobro y webhooks</p></div>
+            <div class="acc"><h3>Messaging account</h3><p class="small">Proveedor B: sus propias plantillas y su cobro</p></div>
+          </div>
+        </div>
+        <div class="portfolio" id="pz-antes" hidden>
+          <p class="plabel">Portafolio de negocio (Business Manager)</p>
+          <div class="acc waba"><h3>WABA (WhatsApp Business Account)</h3>
+            <ul><li>Número y perfil</li><li>Plantillas</li><li>Método de pago</li><li>Webhooks</li></ul>
+            <p class="small">Todo junto y ligado a un solo proveedor. Para cambiar de proveedor había que mover el número.</p>
+          </div>
+        </div>
+      </div>
+      <div class="notes rv">
+        <div class="note"><b>Qué cambió</b><p>Se separa la identidad (el número) de la mensajería (plantillas y cobro). Cada proveedor tiene su propia Messaging account.</p></div>
+        <div class="note"><b>Qué no cambia</b><p>IDs, tokens y llamadas a la API siguen igual. Las cuentas se migraron solas entre septiembre y octubre de 2026.</p></div>
+        <div class="note w"><b>Regla fija</b><p>Un número vive en una sola WhatsApp account y no puede cambiarse a otro portafolio.</p></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 07 Verificación -->
+<section class="slide alt" id="verificacion" data-title="Verificación y calidad" data-block="Bloque 2 · Verificación, calidad y límites">
+  <div class="wrap">
+    <div class="head rv">
+      <p class="eyebrow"><b>Bloque 2</b> Verificación, calidad y límites</p>
+      <h2 class="title">Lo que decide cuánto puedes enviar</h2>
+    </div>
+    <div class="grid g3">
+      <article class="card rv"><svg class="ic"><use href="#i-shield"/></svg><h3>Negocio verificado</h3><p>Se hace en el portafolio con documentos de la empresa. Sin verificar, los envíos que inicia el negocio quedan muy limitados.</p></article>
+      <article class="card rv"><svg class="ic"><use href="#i-chat"/></svg><h3>Nombre visible</h3><p>Es lo que el cliente ve en el chat. Meta lo revisa y debe coincidir con la marca.</p></article>
+      <article class="card rv"><svg class="ic"><use href="#i-users"/></svg><h3>Límite de envíos</h3><p>Cuántas personas distintas puedes contactar con plantillas en 24 h. Es por portafolio y sube con volumen y buena calidad.</p></article>
+      <article class="card rv"><svg class="ic"><use href="#i-bolt"/></svg><h3>Velocidad</h3><p>80 mensajes por segundo por número, ampliable hasta 1,000. En coexistencia es fija: 20.</p></article>
+      <article class="card rv"><svg class="ic"><use href="#i-star"/></svg><h3>Cuenta oficial</h3><p>Insignia de verificación junto al nombre. Pide negocio verificado, notoriedad (presencia en prensa) y verificación en dos pasos.</p></article>
+      <article class="card rv"><svg class="ic"><use href="#i-gauge"/></svg><h3>Calidad del número</h3><p>Alta, media o baja según bloqueos y reportes de los usuarios. Pruébalo abajo.</p></article>
+    </div>
+    <div class="card gauge rv">
+      <svg viewBox="0 0 180 104" role="img" aria-label="Medidor de calidad del número">
+        <path class="arc" d="M20 90 A70 70 0 0 1 55 29.4" stroke="var(--bad)"/>
+        <path class="arc" d="M55 29.4 A70 70 0 0 1 125 29.4" stroke="var(--warn)"/>
+        <path class="arc" d="M125 29.4 A70 70 0 0 1 160 90" stroke="var(--accent)"/>
+        <g class="needle" id="needle" style="transform:rotate(60deg)"><line x1="90" y1="90" x2="90" y2="30" stroke="var(--ink)" stroke-width="4" stroke-linecap="round"/></g>
+        <circle cx="90" cy="90" r="7" fill="var(--ink)"/>
+      </svg>
+      <div class="gauge-txt">
+        <div class="seg" id="q-seg" role="group" aria-label="Elegir calidad">
+          <button type="button" data-v="alta" aria-pressed="true">Alta</button>
+          <button type="button" data-v="media" aria-pressed="false">Media</button>
+          <button type="button" data-v="baja" aria-pressed="false">Baja</button>
+        </div>
+        <p id="q-txt" aria-live="polite"><b>Alta (verde):</b> todo bien. Si mantienes volumen, Meta te sube de nivel de límite automáticamente.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 08 Dos caminos -->
+<section class="slide" id="dos-caminos" data-title="Dos caminos" data-block="Bloque 3 · Conectar la API">
+  <div class="wrap">
+    <div class="head rv">
+      <p class="eyebrow"><b>Bloque 3</b> Conectar la API</p>
+      <h2 class="title">Dos caminos para conectar un número</h2>
+    </div>
+    <div class="grid g3" style="align-items:stretch">
+      <article class="card rv">
+        <span class="tag info">Camino A</span>
+        <h3>Directo con Meta</h3>
+        <ul class="small" style="padding-left:1.1em;display:flex;flex-direction:column;gap:4px">
+          <li>Tu propia app en Meta for Developers</li>
+          <li>Tú construyes webhook, bot y bandeja</li>
+          <li>Pagas directo a Meta</li>
+          <li>Control total, más trabajo técnico</li>
+        </ul>
+        <p style="margin-top:auto"><b style="color:var(--tick)">Ideal:</b> equipos con desarrolladores</p>
+      </article>
+      <article class="card rv" style="border:2px solid var(--accent)">
+        <span class="tag">Camino B</span>
+        <h3>Con un proveedor (como Atom)</h3>
+        <ul class="small" style="padding-left:1.1em;display:flex;flex-direction:column;gap:4px">
+          <li>Se conecta con Embedded Signup</li>
+          <li>Plataforma lista: multiagente, bot, campañas</li>
+          <li>Normalmente pagas al proveedor</li>
+          <li>Rápido de arrancar, menos control</li>
+        </ul>
+        <p style="margin-top:auto"><b style="color:var(--accent)">Ideal:</b> operar sin programar</p>
+      </article>
+      <div class="es rv" aria-label="Ejemplo de la ventana Embedded Signup">
+        <div class="es-top"><i></i><i></i><i></i><span>Embedded Signup · ventana de Meta</span></div>
+        <ol id="es-steps">
+          <li class="on"><span class="num">1</span>Inicia sesión con Facebook</li>
+          <li><span class="num">2</span>Elige el portafolio</li>
+          <li><span class="num">3</span>Conecta la WhatsApp account</li>
+          <li><span class="num">4</span>Nombre visible y código al número</li>
+        </ol>
+        <div style="padding:0 16px 16px"><div class="bar"><i id="es-bar" style="--w:25%"></i></div></div>
+      </div>
+    </div>
+    <p class="small rv">Embedded Signup es la ventana emergente de Meta que se abre desde la plataforma del proveedor. Versiones vigentes: v4 y v5.</p>
+  </div>
+</section>
+
+<!-- 09 Pasos -->
+<section class="slide alt" id="pasos" data-title="Paso a paso" data-block="Bloque 3 · Camino A paso a paso">
+  <div class="wrap">
+    <div class="head rv">
+      <p class="eyebrow"><b>Bloque 3</b> Camino A paso a paso</p>
+      <h2 class="title">Conectar la API directo en Meta</h2>
+    </div>
+    <div class="stepper">
+      <ol class="steps rv" id="steps"></ol>
+      <div class="panel rv" id="step-panel" aria-live="polite"></div>
+    </div>
+  </div>
+</section>
+<style>
+/* ---------- Simulador de ventana ---------- */
+.sim{background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:20px 20px 18px;display:flex;flex-direction:column;gap:16px;box-shadow:var(--shadow);min-width:0}
+.tl{position:relative;height:150px;margin:24px 8px 0}
+.tl .base{position:absolute;left:0;right:0;top:66px;height:2px;background:var(--line)}
+.tl .win{position:absolute;top:56px;height:22px;border-radius:6px;background:color-mix(in srgb,var(--accent) 22%,transparent);border:1px solid var(--accent);transition:left .3s,width .3s}
+.tl .ev{position:absolute;transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;gap:4px;font:600 .7rem/1 var(--mono);color:var(--muted);white-space:nowrap}
+.tl .ev i{width:14px;height:14px;border-radius:50%;border:2px solid var(--surface)}
+.tl .ev.c{top:22px}
+.tl .ev.c i{background:var(--accent);box-shadow:0 0 0 1px var(--accent)}
+.tl .ev.b{top:86px;flex-direction:column-reverse}
+.tl .ev.b i{background:var(--tick);box-shadow:0 0 0 1px var(--tick)}
+.tl .ev.quiet span{visibility:hidden}
+.tl .now{position:absolute;top:-6px;height:132px;width:2px;background:var(--ink);transform:translateX(-1px)}
+.tl .now span{position:absolute;top:-20px;left:50%;transform:translateX(-50%);font:600 .72rem/1 var(--mono);background:var(--ink);color:var(--surface);padding:4px 7px;border-radius:6px;white-space:nowrap}
+.tl .hours{position:absolute;left:0;right:0;bottom:0;display:flex;justify-content:space-between;font:.7rem/1 var(--mono);color:var(--muted)}
+.tl .hours span{width:0;display:flex;justify-content:center;white-space:nowrap}
+@media (max-width:560px){.tl .hours span:nth-child(even){visibility:hidden}}
+.sim input[type=range]{width:100%;accent-color:var(--accent)}
+.legend-row{display:flex;flex-wrap:wrap;gap:16px;font-size:.82rem;color:var(--muted)}
+.legend-row span{display:inline-flex;align-items:center;gap:6px}
+.legend-row i{width:12px;height:12px;border-radius:50%;display:inline-block}
+.status{display:flex;gap:12px;align-items:center;padding:12px 16px;border-radius:12px;transition:background .3s}
+.status.open{background:var(--accent-soft)}
+.status.closed{background:var(--warn-soft)}
+.status .chip{font-size:.8rem}
+.simlog{display:flex;flex-direction:column;gap:6px;min-height:46px}
+.simlog .bubble{font-size:.9rem;max-width:46ch}
+.simlog .bubble.err{background:var(--bad-soft);color:var(--ink)}
+.side-rules{display:flex;flex-direction:column;gap:10px}
+.vgrid{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(0,1fr);gap:24px;align-items:start}
+@media (max-width:900px){.vgrid{grid-template-columns:1fr}}
+
+/* ---------- Matriz de precios ---------- */
+.mxwrap{overflow-x:auto}
+.matrix{display:grid;grid-template-columns:minmax(170px,1.2fr) repeat(3,minmax(130px,1fr));gap:8px;min-width:640px}
+.mx-h{font-size:.76rem;font-weight:700;color:var(--muted);padding:6px 4px;text-transform:uppercase;letter-spacing:.08em;display:flex;align-items:flex-end}
+.mx-r{font-weight:600;display:flex;align-items:center;padding:4px}
+.cell{border:1px solid var(--line);background:var(--surface);border-radius:12px;padding:12px;display:flex;align-items:center;justify-content:center;cursor:pointer;font:inherit;color:inherit;transition:transform .15s,box-shadow .15s}
+.cell:hover{transform:translateY(-2px);box-shadow:var(--shadow)}
+.cell[aria-pressed="true"]{outline:3px solid var(--ink);outline-offset:-2px}
+
+/* ---------- Plantillas ---------- */
+.tplwrap{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:32px;align-items:center}
+@media (max-width:860px){.tplwrap{grid-template-columns:1fr}}
+.mini-phone{border-radius:28px;background:var(--night);padding:8px;max-width:340px;width:100%;justify-self:center;box-shadow:var(--shadow)}
+.mini-phone .chatbg{min-height:380px;justify-content:flex-end;border-radius:22px}
+.tpl-media{height:118px;border-radius:10px;margin:-4px -8px 8px;display:grid;place-items:center;font-family:var(--display);font-weight:800;font-size:2.2rem;color:var(--on-accent);background:linear-gradient(135deg,var(--accent),var(--tick))}
+.code{font-family:var(--mono);font-weight:600;letter-spacing:.12em}
+.cat-panel{display:flex;flex-direction:column;gap:14px}
+.cat-panel h3{font-size:clamp(1.6rem,2.6vw,2.2rem)}
+.cat-panel ul{padding-left:1.1em;color:var(--muted);display:flex;flex-direction:column;gap:4px}
+.anat{display:grid;grid-template-columns:340px minmax(0,1fr);gap:32px;align-items:center}
+@media (max-width:860px){.anat{grid-template-columns:1fr}}
+.anat [data-part]{transition:outline-color .2s,background .2s}
+.mini-phone [data-part]{outline:2px dashed transparent;outline-offset:3px;border-radius:8px;cursor:help}
+.mini-phone [data-part].hot{outline-color:var(--warn)}
+.legend{list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:8px}
+.legend li{display:flex;gap:14px;align-items:flex-start;padding:12px 14px;border-radius:12px;background:var(--surface);border:1px solid var(--line);transition:background .2s,border-color .2s;cursor:help}
+.legend li.hot{background:var(--warn-soft);border-color:var(--warn)}
+.legend li div{display:flex;flex-direction:column;gap:2px}
+.legend li p{color:var(--muted);font-size:.93rem}
+
+/* ---------- Ciclo ---------- */
+.states{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.states .sep{color:var(--muted);display:inline-flex}
+.states .sep .ic{width:18px;height:18px}
+.state{font:600 .95rem/1 var(--body);padding:.78em 1.1em;border-radius:99px;border:1.5px solid var(--line);background:var(--surface);color:var(--ink);cursor:pointer;transition:transform .25s,background .25s,color .25s,border-color .25s,box-shadow .25s}
+.state[aria-pressed="true"]{transform:translateY(-3px) scale(1.04);box-shadow:var(--shadow);color:var(--surface)}
+.state[data-k="borrador"][aria-pressed="true"]{background:var(--ink);border-color:var(--ink)}
+.state[data-k="revision"][aria-pressed="true"]{background:var(--tick);border-color:var(--tick)}
+.state[data-k="aprobada"][aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
+.state[data-k="rechazada"][aria-pressed="true"],.state[data-k="desactivada"][aria-pressed="true"]{background:var(--bad);border-color:var(--bad)}
+.state[data-k="pausada"][aria-pressed="true"]{background:var(--warn);border-color:var(--warn)}
+.state-detail{font-size:1.05rem;max-width:none;align-self:stretch;padding:16px 18px 10px}
+</style>
+
+<!-- 10 Checklist -->
+<section class="slide" id="checklist" data-title="Checklist del número" data-block="Bloque 3 · Checklist del número">
+  <div class="wrap">
+    <div class="head rv">
+      <p class="eyebrow"><b>Bloque 3</b> Checklist</p>
+      <h2 class="title">Antes de conectar un número</h2>
+    </div>
+    <div class="row rv" style="justify-content:space-between">
+      <p class="lede" style="max-width:52ch">Marca lo que ya tienes listo.</p>
+      <div class="ring" aria-live="polite">
+        <svg viewBox="0 0 64 64" aria-hidden="true"><circle class="bg" cx="32" cy="32" r="26"/><circle class="fg" id="ring-fg" cx="32" cy="32" r="26" stroke-dasharray="163.4" stroke-dashoffset="163.4"/></svg>
+        <div><strong id="ring-n">0 / 6</strong><p class="small">listos</p></div>
+      </div>
+    </div>
+    <div class="checks" id="checks">
+      <button class="chk rv" type="button" aria-pressed="false"><span class="box"><svg><use href="#i-tick"/></svg></span><span class="lbl">Puede ser celular o fijo: solo necesita recibir un SMS o una llamada con el código.</span></button>
+      <button class="chk rv" type="button" aria-pressed="false"><span class="box"><svg><use href="#i-tick"/></svg></span><span class="lbl"><em>Ojo</em>No puede estar activo en WhatsApp ni en la Business app, salvo que se conecte con coexistencia.</span></button>
+      <button class="chk rv" type="button" aria-pressed="false"><span class="box"><svg><use href="#i-tick"/></svg></span><span class="lbl"><em>Ojo</em>Para pasarlo a solo API, primero se elimina la cuenta en la app. Los chats del celular no pasan a la API.</span></button>
+      <button class="chk rv" type="button" aria-pressed="false"><span class="box"><svg><use href="#i-tick"/></svg></span><span class="lbl">El nombre visible coincide con la marca; Meta lo revisa.</span></button>
+      <button class="chk rv" type="button" aria-pressed="false"><span class="box"><svg><use href="#i-tick"/></svg></span><span class="lbl">Acceso de administrador al portafolio y, de preferencia, el negocio ya verificado.</span></button>
+      <button class="chk rv" type="button" aria-pressed="false"><span class="box"><svg><use href="#i-tick"/></svg></span><span class="lbl">PIN de 6 dígitos a la mano: Meta lo está retirando, pero la llamada de registro de la API aún lo pide.</span></button>
+    </div>
+  </div>
+</section>
+
+<!-- 11 Coexistencia -->
+<section class="slide night" id="coexistencia" data-title="Coexistencia" data-block="Bloque 4 · Coexistencia">
+  <div class="glow" aria-hidden="true" style="opacity:.6"></div>
+  <div class="wrap">
+    <div class="head rv">
+      <p class="eyebrow"><b>Bloque 4</b> Coexistencia</p>
+      <h2 class="title">Un número, dos puertas: la app y la API</h2>
+      <p class="lede">El negocio sigue contestando desde su celular y, al mismo tiempo, la plataforma (bot, CRM, agentes) recibe y envía por la API.</p>
+    </div>
+    <div class="coex rv">
+      <span class="fly r" aria-hidden="true">eco desde la app</span>
+      <span class="fly l" aria-hidden="true">enviado por API</span>
+      <div class="cnode"><svg class="ic"><use href="#i-phone"/></svg><h3>Business app</h3><p>El celular del dueño o del equipo, como siempre.</p></div>
+      <div class="numc">Número del negocio</div>
+      <div class="cnode"><svg class="ic"><use href="#i-cloud"/></svg><h3>Cloud API</h3><p>Atom, un CRM o un bot con varios agentes.</p></div>
+    </div>
+    <div class="grid g3">
+      <article class="card rv"><span class="tag">Requisito</span><p>Business app versión 2.24.17 o mayor y un proveedor que use Embedded Signup.</p></article>
+      <article class="card rv"><span class="tag">Cómo se conecta</span><p>El negocio confirma desde su Business app (con un código QR) y decide si comparte su historial.</p></article>
+      <article class="card rv"><span class="tag">Cómo se ve</span><p>Lo que se responde en el celular llega a la plataforma como copia (eco), y lo que manda la plataforma aparece en el celular.</p></article>
+    </div>
+  </div>
+</section>
+
+<!-- 12 Qué cambia -->
+<section class="slide" id="coex-cambia" data-title="Qué cambia en la app" data-block="Bloque 4 · Qué cambia en la app">
+  <div class="wrap">
+    <div class="head rv">
+      <p class="eyebrow"><b>Bloque 4</b> Coexistencia</p>
+      <h2 class="title">Lo que cambia en la app al conectar</h2>
+    </div>
+    <div class="row rv" style="justify-content:space-between">
+      <div class="seg" id="f-seg" role="group" aria-label="Filtrar funciones">
+        <button type="button" data-v="all" aria-pressed="true">Todo</button>
+        <button type="button" data-v="lost" aria-pressed="false">Se pierde</button>
+        <button type="button" data-v="chg" aria-pressed="false">Cambia</button>
+        <button type="button" data-v="ok" aria-pressed="false">Funciona</button>
+      </div>
+      <p class="small" id="f-count" aria-live="polite">10 funciones</p>
+    </div>
+    <div class="feats rv" id="feats">
+      <div class="feat" data-k="lost"><strong>Mensajes temporales</strong><span><span class="chip lost">Se apaga</span></span><p>En todos los chats 1 a 1.</p></div>
+      <div class="feat" data-k="lost"><strong>Ver una vez</strong><span><span class="chip lost">Se apaga</span></span><p>En todos los chats 1 a 1.</p></div>
+      <div class="feat" data-k="lost"><strong>Ubicación en tiempo real</strong><span><span class="chip lost">Se apaga</span></span><p>En todos los chats 1 a 1.</p></div>
+      <div class="feat" data-k="lost"><strong>Listas de difusión</strong><span><span class="chip lost">Solo lectura</span></span><p>Las existentes ya no envían y no se pueden crear nuevas.</p></div>
+      <div class="feat" data-k="chg"><strong>Chats de grupo</strong><span><span class="chip chg">Solo en la app</span></span><p>Siguen funcionando en el celular, pero no se sincronizan con la API.</p></div>
+      <div class="feat" data-k="chg"><strong>Dispositivos vinculados</strong><span><span class="chip chg">Se desvinculan</span></span><p>Se pueden volver a ligar (máx. 4), excepto WhatsApp para Windows y WearOS.</p></div>
+      <div class="feat" data-k="chg"><strong>Llamadas</strong><span><span class="chip chg">Solo en la app</span></span><p>Siguen en el celular; no pasan por la API.</p></div>
+      <div class="feat" data-k="ok"><strong>Chats 1 a 1</strong><span><span class="chip ok">Funciona</span></span><p>Se ven en el celular y en la plataforma al mismo tiempo.</p></div>
+      <div class="feat" data-k="ok"><strong>Contactos</strong><span><span class="chip ok">Funciona</span></span><p>Se sincronizan una vez al conectar y después se actualizan solos.</p></div>
+      <div class="feat" data-k="ok"><strong>Editar y eliminar</strong><span><span class="chip ok">Ya funciona</span></span><p>Ahora soportado en chats 1 a 1 (antes no se podía).</p></div>
+    </div>
+    <p class="small rv">Fuente: tabla de funciones de coexistencia en la documentación de Meta, noviembre 2026.</p>
+  </div>
+</section>
+
+<!-- 13 Reglas -->
+<section class="slide alt" id="coex-reglas" data-title="Reglas de coexistencia" data-block="Bloque 4 · Reglas del juego">
+  <div class="wrap">
+    <div class="head rv">
+      <p class="eyebrow"><b>Bloque 4</b> Coexistencia</p>
+      <h2 class="title">Las reglas del juego en seis datos</h2>
+    </div>
+    <div class="grid g3">
+      <article class="tile rv"><span class="big">6 meses</span><strong>de historial</strong><p>Se sincroniza una sola vez y hay 24 h después de conectar para hacerlo.</p></article>
+      <article class="tile rv"><span class="big">$0</span><strong>desde la app</strong><p>Lo que se manda desde el celular sigue gratis. Lo que sale por la API se cobra como API.</p></article>
+      <article class="tile rv"><span class="big">24 h</span><strong>ventanas separadas</strong><p>Responder desde la app no abre ni extiende la ventana de 24 h de la API.</p></article>
+      <article class="tile rv"><span class="big">20/s</span><strong>velocidad fija</strong><p>20 mensajes por segundo, contra 80 o más en un número solo API.</p></article>
+      <article class="tile w rv"><span class="big">14 días</span><strong>sin abrir la app</strong><p>Si el celular principal pasa unos 14 días sin actividad, la conexión se cae.</p></article>
+      <article class="tile rv"><span class="big">1 botón</span><strong>para desconectar</strong><p>Desde la app: Ajustes › Cuenta › Business Platform › Desconectar.</p></article>
+    </div>
+  </div>
+</section>
+
+<!-- 14 Diagnóstico -->
+<section class="slide" id="coex-cuando" data-title="¿Conviene coexistencia?" data-block="Bloque 4 · ¿Cuándo sí y cuándo no?">
+  <div class="wrap">
+    <div class="head rv">
+      <p class="eyebrow"><b>Bloque 4</b> Diagnóstico rápido</p>
+      <h2 class="title">¿Coexistencia o solo API?</h2>
+      <p class="lede">Contesta como si fueras el cliente. El indicador se mueve con cada respuesta.</p>
+    </div>
+    <div class="diag">
+      <div class="qs rv" id="qs">
+        <div class="q"><span id="q1">¿Ya atienden desde la Business app y quieren conservar el número?</span><button class="sw" type="button" role="switch" aria-checked="true" aria-labelledby="q1" data-w="2" data-no="-1"><b>Sí</b><b>No</b></button></div>
+        <div class="q"><span id="q2">¿Alguien abrirá la app del celular al menos cada dos semanas?</span><button class="sw" type="button" role="switch" aria-checked="true" aria-labelledby="q2" data-w="1" data-no="-1"><b>Sí</b><b>No</b></button></div>
+        <div class="q"><span id="q3">¿Necesitan enviar más de 20 mensajes por segundo?</span><button class="sw" type="button" role="switch" aria-checked="false" aria-labelledby="q3" data-w="-3"><b>Sí</b><b>No</b></button></div>
+        <div class="q"><span id="q4">¿Dependen de listas de difusión o mensajes temporales?</span><button class="sw" type="button" role="switch" aria-checked="false" aria-labelledby="q4" data-w="-1"><b>Sí</b><b>No</b></button></div>
+        <div class="q"><span id="q5">¿El equipo atiende desde WhatsApp para Windows?</span><button class="sw" type="button" role="switch" aria-checked="false" aria-labelledby="q5" data-w="-1"><b>Sí</b><b>No</b></button></div>
+      </div>
+      <div class="verdict rv" aria-live="polite">
+        <div class="scale" id="scale"><i></i></div>
+        <div class="scale-labels"><span>Solo API</span><span>Coexistencia</span></div>
+        <h3 id="v-title">Coexistencia</h3>
+        <p id="v-text" class="small">Conserva su número y sus chats, y suma bot o CRM sin cambiar sus hábitos.</p>
+        <div class="callout"><svg class="ic"><use href="#i-chat"/></svg><p><b>Pregunta de diagnóstico:</b> ¿cómo atiendes hoy tu WhatsApp y qué no quieres perder?</p></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 15 Ventana -->
+<section class="slide alt" id="ventana" data-title="Ventana de 24 horas" data-block="Bloque 5 · Ventana de 24 horas">
+  <div class="wrap">
+    <div class="head rv">
+      <p class="eyebrow"><b>Bloque 5</b> Ventana de atención</p>
+      <h2 class="title">La ventana de 24 horas, en vivo</h2>
+      <p class="lede">Mueve la hora y prueba qué pasa. La ventana se abre o se renueva cada vez que <b>el cliente</b> escribe.</p>
+    </div>
+    <div class="vgrid">
+      <div class="sim rv">
+        <div class="legend-row"><span><i style="background:var(--accent)"></i>Escribe el cliente</span><span><i style="background:var(--tick)"></i>Escribe el negocio</span><span><i style="background:color-mix(in srgb,var(--accent) 22%,transparent);border:1px solid var(--accent);border-radius:3px"></i>Ventana abierta</span></div>
+        <div class="tl" id="tl" aria-hidden="true">
+          <div class="base"></div>
+          <div id="tl-dyn"></div>
+          <div class="now" id="tl-now"><span id="tl-now-l">Mar 12:00</span></div>
+          <div class="hours"><span>Lun 08</span><span>Lun 14</span><span>Lun 20</span><span>Mar 02</span><span>Mar 08</span><span>Mar 14</span><span>Mar 20</span></div>
+        </div>
+        <label class="small" for="sim-now">Hora actual: <b id="sim-now-l">Mar 12:00</b></label>
+        <input type="range" id="sim-now" min="0" max="36" step="0.25" value="28">
+        <div class="status open" id="sim-status" aria-live="polite"><span class="chip ok">Abierta</span><span>Quedan 6 h 00 min</span></div>
+        <div class="row">
+          <button class="btn sm" type="button" id="sim-client"><svg class="ic"><use href="#i-user"/></svg>El cliente escribe</button>
+          <button class="btn sm" type="button" id="sim-free"><svg class="ic"><use href="#i-chat"/></svg>Mandar texto libre</button>
+          <button class="btn sm" type="button" id="sim-tpl"><svg class="ic"><use href="#i-send"/></svg>Mandar plantilla</button>
+          <button class="btn sm" type="button" id="sim-reset"><svg class="ic"><use href="#i-reset"/></svg>Reiniciar</button>
+        </div>
+        <div class="simlog" id="sim-log" aria-live="polite"></div>
+      </div>
+      <div class="side-rules">
+        <div class="bubble rv">Se abre o se renueva cuando <b>el cliente</b> escribe. Dura 24 h desde su último mensaje.<div class="meta">regla 1</div></div>
+        <div class="bubble out rv">Nuestros mensajes no la extienden, aunque respondamos muchas veces.<div class="meta">regla 2 <svg class="ticks"><use href="#i-ticks"/></svg></div></div>
+        <div class="bubble rv">Fuera de la ventana solo se pueden mandar <b>plantillas aprobadas</b>. Texto libre = error 131047.<div class="meta">regla 3</div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 16 Precios -->
+<section class="slide" id="precios" data-title="Precios" data-block="Bloque 5 · Cobro por mensaje">
+  <div class="wrap">
+    <div class="head rv">
+      <p class="eyebrow"><b>Bloque 5</b> Precios desde julio 2025</p>
+      <h2 class="title">Se cobra por mensaje, no por conversación</h2>
+      <p class="lede">Toca cualquier celda para ver por qué.</p>
+    </div>
+    <div class="mxwrap rv">
+      <div class="matrix" id="matrix">
+        <div class="mx-h">Mensaje</div><div class="mx-h">Dentro de la ventana</div><div class="mx-h">Fuera de la ventana</div><div class="mx-h">Entrada gratuita 72 h</div>
+        <div class="mx-r">Respuesta libre</div>
+        <button class="cell" type="button" data-t="Respuesta libre dentro de la ventana: gratis. Puede ser texto, foto, audio, botones o listas." aria-pressed="false"><span class="chip ok">Gratis</span></button>
+        <button class="cell" type="button" data-t="Respuesta libre fuera de la ventana: no se puede enviar. La API responde con el error 131047; hay que usar una plantilla." aria-pressed="false"><span class="chip lost">No se puede</span></button>
+        <button class="cell" type="button" data-t="Entrada gratuita: si el cliente llega desde un anuncio Click-to-WhatsApp o el botón de una página y respondes en 24 h, todo es gratis por 72 h." aria-pressed="false"><span class="chip ok">Gratis</span></button>
+        <div class="mx-r">Plantilla de utilidad</div>
+        <button class="cell" type="button" data-t="Utilidad dentro de la ventana: gratis. Por ejemplo, la confirmación de un pedido que el cliente acaba de hacer." aria-pressed="false"><span class="chip ok">Gratis</span></button>
+        <button class="cell" type="button" data-t="Utilidad fuera de la ventana: se cobra por mensaje entregado. Tiene descuentos por volumen mensual." aria-pressed="false"><span class="chip chg">Se cobra</span></button>
+        <button class="cell" type="button" data-t="Dentro de una entrada gratuita, también las plantillas son gratis durante 72 h." aria-pressed="false"><span class="chip ok">Gratis</span></button>
+        <div class="mx-r">Plantilla de marketing</div>
+        <button class="cell" type="button" data-t="Marketing se cobra siempre, aunque la ventana esté abierta. Es la categoría más cara." aria-pressed="false"><span class="chip chg">Se cobra</span></button>
+        <button class="cell" type="button" data-t="Marketing fuera de la ventana: se cobra, con la tarifa del país del destinatario." aria-pressed="false"><span class="chip chg">Se cobra</span></button>
+        <button class="cell" type="button" data-t="Dentro de una entrada gratuita, incluso el marketing es gratis durante 72 h." aria-pressed="false"><span class="chip ok">Gratis</span></button>
+        <div class="mx-r">Plantilla de autenticación</div>
+        <button class="cell" type="button" data-t="Autenticación se cobra siempre, aunque la ventana esté abierta. Tiene descuentos por volumen." aria-pressed="false"><span class="chip chg">Se cobra</span></button>
+        <button class="cell" type="button" data-t="Autenticación fuera de la ventana: se cobra por cada código entregado." aria-pressed="false"><span class="chip chg">Se cobra</span></button>
+        <button class="cell" type="button" data-t="Dentro de una entrada gratuita, también la autenticación es gratis durante 72 h." aria-pressed="false"><span class="chip ok">Gratis</span></button>
+      </div>
+    </div>
+    <div class="bubble out rv" id="mx-detail" style="max-width:none;align-self:stretch" aria-live="polite">Toca una celda de la tabla para ver la explicación.<div class="meta">precios <svg class="ticks"><use href="#i-ticks"/></svg></div></div>
+    <div class="grid g3">
+      <p class="small rv"><b>Tarifa por país:</b> el precio depende del país del destinatario y de la categoría.</p>
+      <p class="small rv"><b>Volumen:</b> utilidad y autenticación bajan de precio con más envíos al mes.</p>
+      <p class="small rv"><b>Pesos mexicanos:</b> desde enero 2026 se puede facturar en MXN al crear una cuenta nueva.</p>
+    </div>
+  </div>
+</section>
+
+<!-- 17 Plantillas -->
+<section class="slide alt" id="plantillas" data-title="Categorías de plantilla" data-block="Bloque 6 · Plantillas">
+  <div class="wrap">
+    <div class="head rv">
+      <p class="eyebrow"><b>Bloque 6</b> Plantillas</p>
+      <h2 class="title">Tres categorías, tres precios</h2>
+    </div>
+    <div class="seg rv" id="cat-seg" role="group" aria-label="Elegir categoría">
+      <button type="button" data-v="mkt" aria-pressed="true">Marketing</button>
+      <button type="button" data-v="uti" aria-pressed="false">Utilidad</button>
+      <button type="button" data-v="aut" aria-pressed="false">Autenticación</button>
+    </div>
+    <div class="tplwrap">
+      <div class="rv">
+        <div class="cat-panel" data-cat="mkt">
+          <span class="tag warn">La más cara</span>
+          <h3>Marketing</h3>
+          <p class="lede">Promueve, vende o reactiva. Es la que Meta más vigila y se cobra siempre.</p>
+          <ul><li>Promociones y cupones</li><li>Lanzamientos</li><li>Carrito abandonado</li><li>Reactivar clientes</li></ul>
+        </div>
+        <div class="cat-panel" data-cat="uti" hidden>
+          <span class="tag">Gratis dentro de la ventana</span>
+          <h3>Utilidad</h3>
+          <p class="lede">Responde a algo que el cliente hizo o pidió. No puede llevar contenido promocional.</p>
+          <ul><li>Confirmación de pedido</li><li>Estado de envío</li><li>Recordatorio de cita</li><li>Aviso de pago</li></ul>
+        </div>
+        <div class="cat-panel" data-cat="aut" hidden>
+          <span class="tag info">Solo códigos</span>
+          <h3>Autenticación</h3>
+          <p class="lede">Solo para códigos de un solo uso (OTP). El texto lo define Meta; tú eliges el botón.</p>
+          <ul><li>Copiar código</li><li>Autollenado con un toque</li><li>Sin toque (Android)</li></ul>
+        </div>
+        <div class="callout warn" style="margin-top:16px"><svg class="ic"><use href="#i-alert"/></svg><p><b>Ojo:</b> Meta revisa la categoría y puede cambiarla. Una «utilidad» con un cupón termina cobrándose como marketing.</p></div>
+      </div>
+      <div class="mini-phone rv" aria-label="Vista previa de la plantilla">
+        <div class="chatbg">
+          <div class="bubble out" data-cat="mkt" style="max-width:100%"><div class="tpl-media">-20%</div>Hola Ana, esta semana tu limpieza dental tiene 20% de descuento. Válido hasta el viernes.<div class="meta">11:30 <svg class="ticks"><use href="#i-ticks"/></svg></div><div class="tbtns"><span>Agendar con descuento</span><span>Detener promociones</span></div></div>
+          <div class="bubble out" data-cat="uti" style="max-width:100%" hidden>Hola Ana, tu pedido #4821 ya va en camino. Llega mañana entre 10:00 y 14:00.<div class="meta">09:12 <svg class="ticks"><use href="#i-ticks"/></svg></div><div class="tbtns"><span>Rastrear pedido</span></div></div>
+          <div class="bubble out" data-cat="aut" style="max-width:100%" hidden><span class="code">482913</span> es tu código de verificación. Por tu seguridad, no lo compartas.<div class="meta">18:40 <svg class="ticks"><use href="#i-ticks"/></svg></div><div class="tbtns"><span>Copiar código</span></div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 18 Anatomía -->
+<section class="slide" id="anatomia" data-title="Partes de una plantilla" data-block="Bloque 6 · Partes de una plantilla">
+  <div class="wrap">
+    <div class="head rv">
+      <p class="eyebrow"><b>Bloque 6</b> Plantillas</p>
+      <h2 class="title">Las partes de una plantilla</h2>
+      <p class="lede">Pasa el cursor (o toca) cada parte para ubicarla.</p>
+    </div>
+    <div class="anat">
+      <div class="mini-phone rv">
+        <div class="chatbg">
+          <div class="bubble out" style="max-width:100%">
+            <div class="tpl-media" data-part="1" tabindex="0" style="font-size:1rem;letter-spacing:.06em">IMAGEN</div>
+            <p data-part="2" tabindex="0">Hola <b>{{1}}</b>, tu cita en <b>{{2}}</b> es mañana a las <b>{{3}}</b>. ¿Confirmas tu asistencia?</p>
+            <p data-part="3" tabindex="0" class="small" style="margin-top:6px">Responde ALTO para dejar de recibir avisos</p>
+            <div class="meta">10:00 <svg class="ticks"><use href="#i-ticks"/></svg></div>
+            <div class="tbtns" data-part="4" tabindex="0"><span>Confirmar</span><span>Reagendar</span><span>Ver ubicación</span></div>
+          </div>
+        </div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:14px" class="rv">
+        <ol class="legend">
+          <li data-part="1"><span class="num">1</span><div><strong>Encabezado (opcional)</strong><p>Texto, imagen, video, documento o ubicación.</p></div></li>
+          <li data-part="2"><span class="num">2</span><div><strong>Cuerpo</strong><p>Texto con variables {{1}}, {{2}}… que se llenan al enviar.</p></div></li>
+          <li data-part="3"><span class="num">3</span><div><strong>Pie (opcional)</strong><p>Texto corto en gris; útil para la opción de baja.</p></div></li>
+          <li data-part="4"><span class="num">4</span><div><strong>Botones</strong><p>Respuesta rápida, abrir URL, llamar, copiar código o abrir un Flow.</p></div></li>
+        </ol>
+        <p class="small"><b>Formatos especiales:</b> carrusel de tarjetas, oferta por tiempo limitado y catálogo de productos.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 19 Ciclo -->
+<section class="slide alt" id="ciclo" data-title="Ciclo de vida" data-block="Bloque 6 · Ciclo de vida de una plantilla">
+  <div class="wrap">
+    <div class="head rv">
+      <p class="eyebrow"><b>Bloque 6</b> Plantillas</p>
+      <h2 class="title">Ciclo de vida de una plantilla</h2>
+      <p class="lede">Se recorre sola; toca un estado para detenerla en ese punto.</p>
+    </div>
+    <div class="states rv" id="states">
+      <button class="state" type="button" data-k="borrador" aria-pressed="true">Borrador</button>
+      <span class="sep" aria-hidden="true"><svg class="ic"><use href="#i-arrow"/></svg></span>
+      <button class="state" type="button" data-k="revision" aria-pressed="false">En revisión</button>
+      <span class="sep" aria-hidden="true"><svg class="ic"><use href="#i-arrow"/></svg></span>
+      <button class="state" type="button" data-k="aprobada" aria-pressed="false">Aprobada</button>
+      <span class="sep" aria-hidden="true"><svg class="ic"><use href="#i-arrow"/></svg></span>
+      <button class="state" type="button" data-k="pausada" aria-pressed="false">Pausada</button>
+      <span class="sep" aria-hidden="true"><svg class="ic"><use href="#i-arrow"/></svg></span>
+      <button class="state" type="button" data-k="desactivada" aria-pressed="false">Desactivada</button>
+      <span class="sep" aria-hidden="true" style="margin-left:12px">o</span>
+      <button class="state" type="button" data-k="rechazada" aria-pressed="false">Rechazada</button>
+    </div>
+    <div class="bubble out state-detail rv" id="state-detail" aria-live="polite"><strong>Borrador</strong><br>La creas en WhatsApp Manager o por API: nombre, idioma, categoría y contenido.<div class="meta">estado <svg class="ticks"><use href="#i-ticks"/></svg></div></div>
+    <div class="grid g2">
+      <article class="card rv"><h3>Calidad</h3><p>Alta, media o baja según cómo reaccionan los usuarios: bloqueos, reportes y lecturas. Si baja mucho, Meta pausa la plantilla.</p></article>
+      <article class="card rv"><h3>Dato extra: MM Lite</h3><p>Marketing Messages API: vía de Meta para enviar plantillas de marketing con entrega optimizada. Atom ya lo ofrece y tiene guía para activarlo.</p></article>
+    </div>
+  </div>
+</section>
+<style>
+/* ---------- Errores ---------- */
+.search{display:flex;align-items:center;gap:10px;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:10px 14px;max-width:520px;width:100%}
+.search .ic{width:20px;height:20px;color:var(--muted)}
+.search input{border:0;background:transparent;font:inherit;color:var(--ink);flex:1;min-width:0;outline:none}
+.search:focus-within{outline:3px solid var(--tick);outline-offset:2px}
+.errs{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+@media (max-width:760px){.errs{grid-template-columns:1fr}}
+.err{display:grid;grid-template-columns:auto minmax(0,1fr);gap:4px 16px;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:14px 16px}
+.err code{grid-row:span 2;font-family:var(--mono);font-weight:600;font-size:1.12rem;color:var(--accent);background:var(--accent-soft);padding:6px 9px;border-radius:8px;align-self:start}
+.err p{color:var(--muted);font-size:.93rem}
+.err p b{color:var(--ink);font-weight:600}
+
+/* ---------- Flows ---------- */
+.fgrid{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:32px;align-items:start}
+@media (max-width:900px){.fgrid{grid-template-columns:1fr}}
+.fscreen{background:var(--surface);border-radius:22px;padding:16px 16px 18px;min-height:430px;display:flex;flex-direction:column;gap:14px;color:var(--ink)}
+.fbar{display:flex;align-items:center;justify-content:space-between;font-weight:700;font-size:1rem;border-bottom:1px solid var(--line);padding-bottom:10px}
+.fbar small{font-weight:500;color:var(--muted);font-size:.78rem}
+.fgroup{display:flex;flex-direction:column;gap:7px}
+.fgroup>span{font-size:.85rem;font-weight:600;color:var(--muted)}
+.opts{display:flex;flex-wrap:wrap;gap:7px}
+.opt{padding:.55em .85em;border-radius:99px;border:1px solid var(--line);background:var(--paper);font:600 .88rem/1 var(--body);color:var(--ink);cursor:pointer;transition:background .2s,color .2s,border-color .2s}
+.opt[aria-checked="true"]{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
+.fscreen .btn{justify-content:center;margin-top:auto}
+.fsum{list-style:none;padding:0;margin:0;display:flex;flex-direction:column;border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.fsum li{display:flex;justify-content:space-between;gap:10px;padding:10px 12px;font-size:.93rem}
+.fsum li+li{border-top:1px solid var(--line)}
+.fsum li span{color:var(--muted)}
+pre.json{margin:0;font-family:var(--mono);font-size:.78rem;line-height:1.6;background:var(--night);color:var(--night-fg);border-radius:14px;padding:16px;overflow-x:auto;white-space:pre-wrap;overflow-wrap:anywhere;max-width:100%}
+pre.json .k{color:var(--night-tick)}
+pre.json .s{color:var(--night-accent)}
+pre.json mark{background:color-mix(in srgb,var(--night-accent) 28%,transparent);color:var(--night-fg);border-radius:4px;padding:0 2px}
+pre.json.flash{animation:flash 1.2s ease}
+@keyframes flash{0%{box-shadow:0 0 0 0 color-mix(in srgb,var(--night-accent) 70%,transparent)}100%{box-shadow:0 0 0 14px transparent}}
+.uses{display:flex;flex-wrap:wrap;gap:8px}
+.uses span{padding:.5em .9em;border-radius:10px;background:var(--surface);border:1px solid var(--line);font-size:.92rem}
+.snippet{font-family:var(--mono);font-size:.8rem;line-height:1.55;background:var(--paper-2);border:1px solid var(--line);border-radius:10px;padding:12px;white-space:pre;overflow-x:auto;color:var(--ink);margin:0}
+
+/* ---------- Migración ---------- */
+.mig{position:relative;height:250px;max-width:760px;width:100%;margin-inline:auto}
+.mig .mlinks{position:absolute;inset:0;width:100%;height:100%;overflow:visible;transition:opacity .4s}
+.mig .mlinks path{fill:none;stroke:var(--accent);stroke-width:2.5;stroke-dasharray:7 7;animation:dash 1.1s linear infinite}
+.mig.antes .mlinks{opacity:0}
+.mig .prov{position:absolute;bottom:0;width:38%;padding:16px;border-radius:14px;background:var(--surface);border:1px solid var(--line);text-align:center;display:flex;flex-direction:column;gap:2px;transition:border-color .4s,background .4s}
+.mig .pa{left:0}.mig .pb{right:0}
+.mig.ahora .prov{border:2px solid var(--accent)}
+.mig .prov strong{font-family:var(--display);font-size:1.15rem}
+.numchip{position:absolute;top:0;left:50%;transform:translateX(-50%);padding:11px 18px;border-radius:99px;background:var(--accent);color:var(--on-accent);font-weight:700;white-space:nowrap;box-shadow:var(--shadow);display:inline-flex;align-items:center;gap:8px}
+.numchip .ic{width:18px;height:18px}
+.mig.antes .numchip{animation:hop 4.6s ease-in-out infinite}
+@keyframes hop{0%{left:19%;top:118px;opacity:0}8%,22%{left:19%;top:118px;opacity:1}55%{left:50%;top:6px}82%,94%{left:81%;top:118px;opacity:1}100%{left:81%;top:118px;opacity:0}}
+.migcols{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr);gap:28px;align-items:center}
+@media (max-width:900px){.migcols{grid-template-columns:1fr}}
+.miglist{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}
+.miglist li{display:flex;gap:10px;align-items:flex-start}
+.miglist li .ic{width:20px;height:20px;color:var(--accent);margin-top:2px}
+.miglist.old li .ic{color:var(--warn)}
+
+/* ---------- Frase ---------- */
+.statement{font-family:var(--display);font-weight:800;font-size:clamp(2.3rem,6vw,5.2rem);line-height:1.02;letter-spacing:-.04em;max-width:17ch}
+.statement .w{display:inline-block;transition:opacity .6s ease,transform .8s cubic-bezier(.2,.7,.2,1);transition-delay:calc(var(--i,0) * 90ms + .1s)}
+.statement em{font-style:normal;color:var(--night-accent)}
+.js .slide.pre .statement .w{opacity:0;transform:translateY(.45em)}
+
+/* ---------- Recursos ---------- */
+.reslist{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}
+.reslist a{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:11px 14px;border-radius:12px;text-decoration:none;color:var(--ink);background:var(--surface);border:1px solid var(--line);transition:border-color .2s,transform .2s}
+.reslist a:hover{border-color:var(--accent);transform:translateX(3px)}
+.reslist a .ic{width:18px;height:18px;color:var(--accent)}
+.colhead{font-size:var(--t-label);letter-spacing:.12em;text-transform:uppercase;font-weight:700;color:var(--muted);padding-bottom:8px;border-bottom:2px solid var(--line)}
+
+/* ---------- Tarjetas que giran ---------- */
+.flips{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
+@media (max-width:900px){.flips{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:600px){.flips{grid-template-columns:1fr}}
+.flip{perspective:1100px;background:none;border:0;padding:0;font:inherit;color:inherit;text-align:left;cursor:pointer;min-height:200px;display:grid}
+.flip-in{position:relative;display:grid;transition:transform .7s cubic-bezier(.3,.7,.3,1);transform-style:preserve-3d}
+.flip .face{grid-area:1/1;backface-visibility:hidden;-webkit-backface-visibility:hidden;border-radius:16px;padding:20px;display:flex;flex-direction:column;gap:10px;border:1px solid var(--line);background:var(--surface)}
+.flip .back{transform:rotateY(180deg);background:var(--accent-soft);border-color:var(--accent)}
+.flip[aria-pressed="true"] .flip-in{transform:rotateY(180deg)}
+.flip:hover .front{border-color:var(--accent)}
+.face .n{font-family:var(--display);font-weight:800;font-size:1.5rem;color:var(--accent);line-height:1}
+.face .q{font-size:1.08rem;font-weight:600}
+.face .hint2{margin-top:auto;font-size:.8rem;color:var(--muted);display:flex;align-items:center;gap:6px}
+.face .a{font-size:.95rem;color:var(--ink)}
+.ideas{display:flex;flex-direction:column;gap:10px;max-width:620px;width:100%}
+.ideas .bubble{max-width:100%;font-size:1.05rem}
+.btn:disabled{opacity:.45;cursor:default;transform:none}
+@media (prefers-reduced-motion: reduce){
+  html{scroll-behavior:auto}
+  *,*::before,*::after{animation-duration:.001ms!important;animation-iteration-count:1!important;transition-duration:.001ms!important;transition-delay:0s!important}
+  .packet,.fly,.glow{display:none}
+}
+</style>
+
+<!-- 20 Errores -->
+<section class="slide" id="errores" data-title="Errores comunes" data-block="Bloque 6 · Cuando un mensaje no llega">
+  <div class="wrap">
+    <div class="head rv">
+      <p class="eyebrow"><b>Bloque 6</b> Errores</p>
+      <h2 class="title">Cuando un mensaje no llega</h2>
+      <p class="lede">No hay que memorizarlos: basta saber que existe la página oficial de códigos y reconocer los más comunes.</p>
+    </div>
+    <div class="row rv" style="justify-content:space-between">
+      <label class="search" for="err-q"><svg class="ic"><use href="#i-search"/></svg><span class="sr">Buscar error</span><input id="err-q" type="search" placeholder="Busca «24 h», «plantilla» o un código" autocomplete="off"></label>
+      <p class="small" id="err-count" aria-live="polite">7 de 7 códigos</p>
+    </div>
+    <div class="errs" id="errs">
+      <div class="err rv"><code>131047</code><p><b>Pasaron más de 24 h</b> desde el último mensaje del cliente.</p><p>Qué hacer: mandar una plantilla.</p></div>
+      <div class="err rv"><code>131049</code><p><b>Meta no lo entregó</b> para cuidar la experiencia del usuario (exceso de marketing).</p><p>Qué hacer: espaciar envíos y segmentar mejor.</p></div>
+      <div class="err rv"><code>131026</code><p><b>No se pudo entregar:</b> número sin WhatsApp, app vieja o términos sin aceptar.</p><p>Qué hacer: validar el número o usar otro canal.</p></div>
+      <div class="err rv"><code>132001</code><p><b>La plantilla no existe</b> o el idioma no coincide.</p><p>Qué hacer: revisar nombre e idioma.</p></div>
+      <div class="err rv"><code>132000</code><p><b>El número de variables</b> no coincide con la plantilla.</p><p>Qué hacer: revisar los parámetros.</p></div>
+      <div class="err rv"><code>131056</code><p><b>Demasiados mensajes</b> al mismo usuario en poco tiempo.</p><p>Qué hacer: esperar antes de volver a escribirle.</p></div>
+      <div class="err rv"><code>130429</code><p><b>Se superó la velocidad</b> de envío del número.</p><p>Qué hacer: reintentar más despacio.</p></div>
+    </div>
+    <p class="small rv">Lista completa: <a href="https://developers.facebook.com/docs/whatsapp/cloud-api/support/error-codes" target="_blank" rel="noopener">developers.facebook.com › Cloud API › Códigos de error</a></p>
+  </div>
+</section>
+
+<!-- 21 Flows -->
+<section class="slide alt" id="flows" data-title="WhatsApp Flows" data-block="Bloque 7 · WhatsApp Flows">
+  <div class="wrap">
+    <div class="head rv">
+      <p class="eyebrow"><b>Bloque 7</b> WhatsApp Flows</p>
+      <h2 class="title">Formularios sin salir del chat</h2>
+    </div>
+    <div class="fgrid" id="flowdemo">
+      <div style="display:flex;flex-direction:column;gap:16px;min-width:0" class="rv">
+        <p class="lede">Un Flow son pantallas interactivas dentro de WhatsApp. Pruébalo en el teléfono: elige, continúa y envía. A la derecha ves lo que le llega al negocio por webhook.</p>
+        <div class="uses"><span>Agendar una cita</span><span>Registro a un evento</span><span>Encuesta</span><span>Cotización</span><span>Calificar un lead</span><span>Soporte</span></div>
+        <p class="small"><b>Lo que recibe el negocio</b> (mensaje tipo <code>nfm_reply</code>):</p>
+        <pre class="json" id="fjson" aria-live="polite"></pre>
+      </div>
+      <div class="mini-phone rv">
+        <div class="fscreen" id="fs1">
+          <div class="fbar"><span>Agenda tu cita</span><small>Paso 1 de 2</small></div>
+          <div class="fgroup"><span id="fl-suc">Sucursal</span><div class="opts" role="radiogroup" aria-labelledby="fl-suc" data-k="sucursal"><button class="opt" type="button" role="radio" aria-checked="true" data-v="Centro">Centro</button><button class="opt" type="button" role="radio" aria-checked="false" data-v="Norte">Norte</button><button class="opt" type="button" role="radio" aria-checked="false" data-v="Sur">Sur</button></div></div>
+          <div class="fgroup"><span id="fl-fec">Fecha</span><div class="opts" role="radiogroup" aria-labelledby="fl-fec" data-k="fecha"><button class="opt" type="button" role="radio" aria-checked="false" data-v="Lun 16 nov">Lun 16 nov</button><button class="opt" type="button" role="radio" aria-checked="true" data-v="Mar 17 nov">Mar 17 nov</button><button class="opt" type="button" role="radio" aria-checked="false" data-v="Mié 18 nov">Mié 18 nov</button></div></div>
+          <div class="fgroup"><span id="fl-hor">Horario</span><div class="opts" role="radiogroup" aria-labelledby="fl-hor" data-k="horario"><button class="opt" type="button" role="radio" aria-checked="false" data-v="10:00">10:00</button><button class="opt" type="button" role="radio" aria-checked="true" data-v="12:00">12:00</button><button class="opt" type="button" role="radio" aria-checked="false" data-v="16:00">16:00</button></div></div>
+          <button class="btn primary" type="button" id="f-next">Continuar</button>
+        </div>
+        <div class="fscreen" id="fs2" hidden>
+          <div class="fbar"><span>Confirma tu cita</span><small>Paso 2 de 2</small></div>
+          <ul class="fsum" id="f-sum"></ul>
+          <p class="small">Al enviar, tus respuestas se comparten con Clínica Aurora.</p>
+          <div class="row" style="margin-top:auto"><button class="btn" type="button" id="f-back">Atrás</button><button class="btn primary" type="button" id="f-send" style="flex:1;justify-content:center">Enviar</button></div>
+        </div>
+        <div class="fscreen chatbg" id="fs3" hidden style="justify-content:flex-end">
+          <div class="bubble">Elige día y horario para tu cita.<div class="tbtns"><span>Agendar cita</span></div><div class="meta">10:15</div></div>
+          <div class="bubble out"><b>Enviado</b><br><span id="f-reply"></span><div class="meta">10:16 <svg class="ticks"><use href="#i-ticks"/></svg></div></div>
+          <button class="btn" type="button" id="f-again" style="align-self:center"><svg class="ic"><use href="#i-reset"/></svg>Probar otra vez</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 22 Flows cómo -->
+<section class="slide" id="flows-como" data-title="Cómo se construyen" data-block="Bloque 7 · Cómo se construyen">
+  <div class="wrap">
+    <div class="head rv">
+      <p class="eyebrow"><b>Bloque 7</b> WhatsApp Flows</p>
+      <h2 class="title">Dos formas de construirlos</h2>
+    </div>
+    <div class="grid g2">
+      <article class="card rv"><svg class="ic"><use href="#i-layout"/></svg><h3>Sin código: Flow Builder</h3>
+        <ul class="small" style="padding-left:1.1em;display:flex;flex-direction:column;gap:4px"><li>En WhatsApp Manager › Herramientas de la cuenta › Flows</li><li>Arrastras pantallas y campos, con vista previa</li><li>Ideal para formularios con opciones fijas</li></ul></article>
+      <article class="card rv"><svg class="ic"><use href="#i-code"/></svg><h3>Con código: Flow JSON + servidor</h3>
+        <ul class="small" style="padding-left:1.1em;display:flex;flex-direction:column;gap:4px"><li>Las pantallas se escriben en Flow JSON</li><li>Un servidor responde en vivo (horarios, precios)</li><li>Los datos viajan cifrados</li></ul>
+        <pre class="snippet" aria-label="Ejemplo de Flow JSON">{
+  "screens": [{
+    "id": "CITA",
+    "title": "Agenda tu cita",
+    "layout": { "type": "SingleColumnLayout", … }
+  }]
+}</pre></article>
+    </div>
+    <div class="grid g4">
+      <div class="note rv"><b>Fuera de la ventana</b><p>Se envía con una plantilla que trae botón de Flow.</p></div>
+      <div class="note rv"><b>Dentro de la ventana</b><p>Se envía como mensaje interactivo de Flow.</p></div>
+      <div class="note w rv"><b>Al publicar</b><p>Ya no se edita; para cambiarlo se clona.</p></div>
+      <div class="note rv"><b>En Atom</b><p>Un Flow publicado se puede duplicar en otros números.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- 23 Migración -->
+<section class="slide alt" id="migracion" data-title="Cambio de proveedor" data-block="Bloque 8 · Cambio de proveedor">
+  <div class="wrap">
+    <div class="head rv">
+      <p class="eyebrow"><b>Bloque 8</b> Cambio de proveedor</p>
+      <h2 class="title">De mudar el número a compartir la cuenta</h2>
+    </div>
+    <div class="seg rv" id="mig-seg" role="group" aria-label="Elegir modelo">
+      <button type="button" data-v="antes" aria-pressed="false">Antes: se migraba</button>
+      <button type="button" data-v="ahora" aria-pressed="true">Ahora: se comparte</button>
+    </div>
+    <div class="migcols">
+      <div class="mig ahora rv" id="mig" aria-hidden="true">
+        <svg class="mlinks" viewBox="0 0 100 100" preserveAspectRatio="none"><path d="M50 18 L19 66" vector-effect="non-scaling-stroke"/><path d="M50 18 L81 66" vector-effect="non-scaling-stroke"/></svg>
+        <div class="numchip"><svg class="ic"><use href="#i-phone"/></svg>Número del cliente</div>
+        <div class="prov pa"><strong>Proveedor A</strong><span class="small">el anterior</span></div>
+        <div class="prov pb"><strong>Proveedor B</strong><span class="small">ej. Atom</span></div>
+      </div>
+      <div class="rv">
+        <ul class="miglist" data-mig="ahora">
+          <li><svg class="ic"><use href="#i-check"/></svg>El número no se mueve y no hay cortes.</li>
+          <li><svg class="ic"><use href="#i-check"/></svg>El cliente comparte su WhatsApp account con el nuevo proveedor desde Embedded Signup.</li>
+          <li><svg class="ic"><use href="#i-check"/></svg>Cada proveedor tiene su Messaging account: plantillas y cobro separados.</li>
+          <li><svg class="ic"><use href="#i-check"/></svg>Plantillas: se recrean o se copian con la Template Migration API.</li>
+          <li><svg class="ic"><use href="#i-check"/></svg>Puede haber dos proveedores a la vez; quitar al anterior lo decide el cliente.</li>
+        </ul>
+        <ul class="miglist old" data-mig="antes" hidden>
+          <li><svg class="ic"><use href="#i-alert"/></svg>Solo dentro del mismo Business Manager.</li>
+          <li><svg class="ic"><use href="#i-alert"/></svg>Había que apagar la verificación en dos pasos con el proveedor anterior.</li>
+          <li><svg class="ic"><use href="#i-alert"/></svg>Se confirmaba con un código por SMS o llamada.</li>
+          <li><svg class="ic"><use href="#i-alert"/></svg>Solo pasaban las plantillas de calidad alta.</li>
+          <li><svg class="ic"><use href="#i-alert"/></svg>El historial de chats no se pasaba.</li>
+        </ul>
+      </div>
+    </div>
+    <div class="callout warn rv"><svg class="ic"><use href="#i-alert"/></svg><p><b>Ojo:</b> las plantillas copiadas reinician su calidad (2 a 4 semanas para estabilizarse). La guía de migración de Atom (marzo 2026) todavía describe el proceso anterior.</p></div>
+  </div>
+</section>
+
+<!-- 24 Frase -->
+<section class="slide night" id="numero" data-title="La idea clave" data-block="La idea para llevarse">
+  <div class="glow" aria-hidden="true"></div>
+  <div class="wrap">
+    <p class="eyebrow rv"><b>●</b> La idea para llevarse</p>
+    <p class="statement"><span class="w">El</span> <span class="w">número</span> <span class="w">es</span> <em class="w">del</em> <em class="w">cliente.</em><br><span class="w">El</span> <span class="w">proveedor</span> <em class="w">solo</em> <em class="w">se</em> <em class="w">conecta.</em></p>
+    <p class="lede rv">Por eso cambiar de proveedor ya no es mudarse: es dar acceso. Y por eso la coexistencia tiene sentido: el negocio nunca pierde su número.</p>
+  </div>
+</section>
+
+<!-- 25 Atom -->
+<section class="slide" id="atom" data-title="Atom" data-block="Bloque 9 · Atom">
+  <div class="wrap">
+    <div class="head rv">
+      <p class="eyebrow"><b>Bloque 9</b> Atom</p>
+      <h2 class="title">Lo que ofrece Atom</h2>
+      <p class="lede">Según su centro de ayuda (artículos de marzo 2026).</p>
+    </div>
+    <div class="grid g3">
+      <article class="card rv"><svg class="ic"><use href="#i-shield"/></svg><h3>Proveedor oficial</h3><p>BSP autorizado por Meta para conectar la API.</p></article>
+      <article class="card rv"><svg class="ic"><use href="#i-users"/></svg><h3>Chatbot y multiagente</h3><p>Bot propio 24/7 y varios asesores en un mismo número.</p></article>
+      <article class="card rv"><svg class="ic"><use href="#i-mega"/></svg><h3>Campañas</h3><p>Envíos masivos y personalizados con listas segmentadas.</p></article>
+      <article class="card rv"><svg class="ic"><use href="#i-link"/></svg><h3>Integración con HubSpot</h3><p>Conecta WhatsApp con HubSpot y usa sus listas de contactos.</p></article>
+      <article class="card rv"><svg class="ic"><use href="#i-call"/></svg><h3>Llamadas de WhatsApp</h3><p>Llamadas con clientes, pidiendo su permiso primero.</p></article>
+      <article class="card rv"><svg class="ic"><use href="#i-bolt"/></svg><h3>MM Lite y Flows</h3><p>Marketing optimizado y Flows duplicables entre números.</p></article>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:8px">
+      <p class="small rv"><b>Para preguntarles en la entrevista</b></p>
+      <div class="bubble out rv">¿Ya operan con el nuevo modelo de cuentas para los cambios de proveedor?<div class="meta">tú <svg class="ticks"><use href="#i-ticks"/></svg></div></div>
+      <div class="bubble out rv">¿Ofrecen coexistencia? Su guía dice que pasar a API «no es reversible».<div class="meta">tú <svg class="ticks"><use href="#i-ticks"/></svg></div></div>
+    </div>
+  </div>
+</section>
+
+<!-- 26 Recursos -->
+<section class="slide alt" id="recursos" data-title="Recursos" data-block="Bloque 9 · Documentación recomendada">
+  <div class="wrap">
+    <div class="head rv">
+      <p class="eyebrow"><b>Bloque 9</b> Para estudiar</p>
+      <h2 class="title">Documentación recomendada</h2>
+      <p class="lede">Orden sugerido: primero las dos guías básicas de Atom, luego coexistencia y nuevo modelo de cuentas en Meta.</p>
+    </div>
+    <div class="grid g2" style="align-items:start">
+      <div style="display:flex;flex-direction:column;gap:10px" class="rv">
+        <p class="colhead">Centro de ayuda de Atom</p>
+        <ul class="reslist">
+          <li><a href="https://soporte.atomchat.io/en/articles/13976114-differences-between-whatsapp-business-and-whatsapp-api" target="_blank" rel="noopener">Diferencias entre Business app y API<svg class="ic"><use href="#i-arrow"/></svg></a></li>
+          <li><a href="https://soporte.atomchat.io/en/articles/13976104-everything-you-need-to-know-about-whatsapp-api" target="_blank" rel="noopener">Todo sobre la WhatsApp API<svg class="ic"><use href="#i-arrow"/></svg></a></li>
+          <li><a href="https://soporte.atomchat.io/en/articles/13976105-whatsapp-api-account-activation-first-steps" target="_blank" rel="noopener">Activación de la cuenta API<svg class="ic"><use href="#i-arrow"/></svg></a></li>
+          <li><a href="https://soporte.atomchat.io/en/articles/13976106-migration-from-official-whatsapp-provider-to-atom" target="_blank" rel="noopener">Migración a Atom desde otro proveedor<svg class="ic"><use href="#i-arrow"/></svg></a></li>
+          <li><a href="https://soporte.atomchat.io/en/articles/13976100-how-do-message-sending-limits-work-based-on-whatsapp-number-quality" target="_blank" rel="noopener">Límites según la calidad del número<svg class="ic"><use href="#i-arrow"/></svg></a></li>
+          <li><a href="https://soporte.atomchat.io/en/articles/13976091-mmlite-what-are-the-benefits-of-using-it-in-your-company" target="_blank" rel="noopener">MM Lite y sus beneficios<svg class="ic"><use href="#i-arrow"/></svg></a></li>
+          <li><a href="https://soporte.atomchat.io/en/articles/15947859-whatsapp-flow-duplication-deploy-across-multiple-channels" target="_blank" rel="noopener">Duplicar Flows en varios números<svg class="ic"><use href="#i-arrow"/></svg></a></li>
+          <li><a href="https://soporte.atomchat.io/en/articles/13975826-how-to-integrate-whatsapp-and-hubspot-with-atom" target="_blank" rel="noopener">Integrar WhatsApp y HubSpot con Atom<svg class="ic"><use href="#i-arrow"/></svg></a></li>
+          <li><a href="https://soporte.atomchat.io/en/collections/18848281-whatsapp-api-and-meta" target="_blank" rel="noopener">Colección completa (19 artículos)<svg class="ic"><use href="#i-arrow"/></svg></a></li>
+        </ul>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:10px" class="rv">
+        <p class="colhead">Documentación oficial de Meta</p>
+        <ul class="reslist">
+          <li><a href="https://developers.facebook.com/documentation/business-messaging/whatsapp/embedded-signup/onboarding-business-app-users" target="_blank" rel="noopener">Coexistencia (Business app + API)<svg class="ic"><use href="#i-arrow"/></svg></a></li>
+          <li><a href="https://developers.facebook.com/documentation/business-messaging/whatsapp/account-model-evolution" target="_blank" rel="noopener">Nuevo modelo de cuentas<svg class="ic"><use href="#i-arrow"/></svg></a></li>
+          <li><a href="https://developers.facebook.com/docs/whatsapp/pricing" target="_blank" rel="noopener">Precios por mensaje<svg class="ic"><use href="#i-arrow"/></svg></a></li>
+          <li><a href="https://developers.facebook.com/docs/whatsapp/business-management-api/message-templates" target="_blank" rel="noopener">Plantillas<svg class="ic"><use href="#i-arrow"/></svg></a></li>
+          <li><a href="https://developers.facebook.com/docs/whatsapp/cloud-api/support/error-codes" target="_blank" rel="noopener">Códigos de error<svg class="ic"><use href="#i-arrow"/></svg></a></li>
+          <li><a href="https://developers.facebook.com/docs/whatsapp/flows" target="_blank" rel="noopener">WhatsApp Flows<svg class="ic"><use href="#i-arrow"/></svg></a></li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 27 Preguntas -->
+<section class="slide" id="preguntas" data-title="Preguntas de práctica" data-block="Bloque 9 · Práctica">
+  <div class="wrap">
+    <div class="head rv">
+      <p class="eyebrow"><b>Bloque 9</b> Práctica</p>
+      <h2 class="title">Preguntas que te pueden hacer</h2>
+      <p class="lede">Contesta en voz alta y luego toca la tarjeta para ver la respuesta.</p>
+    </div>
+    <div class="flips">
+      <button class="flip rv" type="button" aria-pressed="false"><span class="flip-in"><span class="face front"><span class="n">01</span><span class="q">¿Cuál es la diferencia entre la Business app y la API?</span><span class="hint2"><svg class="ic" style="width:16px;height:16px"><use href="#i-reset"/></svg>Toca para voltear</span></span><span class="face back"><span class="n">01</span><span class="a">La app es gratis, vive en el celular y es para atender uno a uno. La API no tiene app: se conecta a una plataforma, permite muchos agentes, bots, campañas e integraciones, y cobra por mensaje.</span></span></span></button>
+      <button class="flip rv" type="button" aria-pressed="false"><span class="flip-in"><span class="face front"><span class="n">02</span><span class="q">Un cliente quiere conservar su número y su app. ¿Qué le ofreces y qué le avisas?</span><span class="hint2"><svg class="ic" style="width:16px;height:16px"><use href="#i-reset"/></svg>Toca para voltear</span></span><span class="face back"><span class="n">02</span><span class="a">Coexistencia. Avisarle: se apagan mensajes temporales, ver una vez y ubicación en vivo; difusión queda de solo lectura; no Windows; 20 mensajes por segundo; abrir la app cada ~14 días.</span></span></span></button>
+      <button class="flip rv" type="button" aria-pressed="false"><span class="flip-in"><span class="face front"><span class="n">03</span><span class="q">Un cliente escribió hace dos días y tu respuesta no sale. ¿Por qué?</span><span class="hint2"><svg class="ic" style="width:16px;height:16px"><use href="#i-reset"/></svg>Toca para voltear</span></span><span class="face back"><span class="n">03</span><span class="a">Se cerró la ventana de 24 horas, que cuenta desde su último mensaje. Hay que mandar una plantilla. El error que devuelve la API es 131047.</span></span></span></button>
+      <button class="flip rv" type="button" aria-pressed="false"><span class="flip-in"><span class="face front"><span class="n">04</span><span class="q">Un recordatorio de cita, ¿qué categoría es? ¿Y un cupón?</span><span class="hint2"><svg class="ic" style="width:16px;height:16px"><use href="#i-reset"/></svg>Toca para voltear</span></span><span class="face back"><span class="n">04</span><span class="a">El recordatorio es utilidad (gratis dentro de la ventana). El cupón es marketing y se cobra siempre.</span></span></span></button>
+      <button class="flip rv" type="button" aria-pressed="false"><span class="flip-in"><span class="face front"><span class="n">05</span><span class="q">Un cliente viene de otro proveedor. ¿Cómo lo traes hoy?</span><span class="hint2"><svg class="ic" style="width:16px;height:16px"><use href="#i-reset"/></svg>Toca para voltear</span></span><span class="face back"><span class="n">05</span><span class="a">Con el nuevo modelo, el cliente comparte su WhatsApp account con Atom desde Embedded Signup. El número no se mueve; las plantillas se recrean o se copian con la Template Migration API.</span></span></span></button>
+      <button class="flip rv" type="button" aria-pressed="false"><span class="flip-in"><span class="face front"><span class="n">06</span><span class="q">¿Qué es un WhatsApp Flow y en qué caso lo usarías?</span><span class="hint2"><svg class="ic" style="width:16px;height:16px"><use href="#i-reset"/></svg>Toca para voltear</span></span><span class="face back"><span class="n">06</span><span class="a">Pantallas tipo formulario dentro del chat. Por ejemplo, para agendar citas o calificar leads; las respuestas llegan por webhook al CRM.</span></span></span></button>
+    </div>
+  </div>
+</section>
+
+<!-- 28 Cierre -->
+<section class="slide night" id="cierre" data-title="Cierre" data-block="Cierre · ¿dudas?">
+  <div class="glow b" aria-hidden="true"></div>
+  <div class="wrap">
+    <p class="eyebrow rv"><b>●</b> Repaso en cuatro ideas</p>
+    <h2 class="hero rv">¿Dudas?</h2>
+    <div class="ideas">
+      <div class="bubble out rv">La API no tiene app: siempre va con una plataforma.<div class="meta"><svg class="ticks"><use href="#i-ticks"/></svg></div></div>
+      <div class="bubble out rv">La ventana de 24 horas la abre el cliente.<div class="meta"><svg class="ticks"><use href="#i-ticks"/></svg></div></div>
+      <div class="bubble out rv">Las plantillas abren conversaciones y se cobran por categoría.<div class="meta"><svg class="ticks"><use href="#i-ticks"/></svg></div></div>
+      <div class="bubble out rv">El número es del cliente; los proveedores se conectan.<div class="meta"><svg class="ticks"><use href="#i-ticks"/></svg></div></div>
+    </div>
+    <div class="row rv"><a class="btn primary" href="#inicio"><svg class="ic"><use href="#i-reset"/></svg>Volver al inicio</a></div>
+  </div>
+</section>
+</main>
+<script>
+(function(){
+'use strict';
+var root=document.documentElement; root.classList.add('js');
+var reduce=!!(window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+function $(s,c){return (c||document).querySelector(s)}
+function $$(s,c){return Array.prototype.slice.call((c||document).querySelectorAll(s))}
+function pad(n){return String(n).padStart(2,'0')}
+function swap(el){if(!el)return;el.classList.remove('fade-swap');void el.offsetWidth;el.classList.add('fade-swap')}
+var TICKS='<svg class="ticks"><use href="#i-ticks"/></svg>';
+function segGroup(sel,cb){var g=$(sel);if(!g)return;$$('button',g).forEach(function(b){b.addEventListener('click',function(){$$('button',g).forEach(function(x){x.setAttribute('aria-pressed',x===b?'true':'false')});cb(b.dataset.v,b)})})}
+
+/* ---------- Navegación entre pantallas ---------- */
+var slides=$$('.slide'),total=slides.length,cur=-1;
+slides.forEach(function(s){$$('.rv',s).forEach(function(el,i){el.style.setProperty('--i',Math.min(i,10))});$$('.statement .w',s).forEach(function(el,i){el.style.setProperty('--i',i)})});
+var hash='';try{hash=decodeURIComponent((location.hash||'').slice(1))}catch(e){}
+var startIdx=0;slides.forEach(function(s,i){if(s.id===hash)startIdx=i});
+if(startIdx>0){try{slides[startIdx].scrollIntoView({block:'start',behavior:'instant'})}catch(e){slides[startIdx].scrollIntoView(true)}}
+
+if('IntersectionObserver' in window&&!reduce){
+  var vh=window.innerHeight;
+  slides.forEach(function(s){var r=s.getBoundingClientRect();if(r.top>=vh*0.85||r.bottom<=0){s.classList.add('pre')}else{s.classList.add('in')}});
+  var ro=new IntersectionObserver(function(es){es.forEach(function(e){if(e.isIntersecting){e.target.classList.remove('pre');e.target.classList.add('in');ro.unobserve(e.target)}})},{threshold:0.06,rootMargin:'0px 0px -12% 0px'});
+  slides.forEach(function(s){if(s.classList.contains('pre'))ro.observe(s)});
+}else{slides.forEach(function(s){s.classList.add('in')})}
+
+var statusEl=$('#status'),counter=$('#counter'),prog=$('#prog'),dotsNav=$('#dots');
+slides.forEach(function(s,i){var b=document.createElement('button');b.type='button';b.setAttribute('aria-label',(i+1)+'. '+(s.dataset.title||s.id));b.title=s.dataset.title||'';b.addEventListener('click',function(){go(i)});dotsNav.appendChild(b)});
+var dots=$$('button',dotsNav);
+function setCur(i){if(i===cur)return;cur=i;var s=slides[i];statusEl.textContent=s.dataset.block||'';counter.textContent=pad(i+1)+' / '+total;prog.style.setProperty('--p',((i+1)/total*100)+'%');dots.forEach(function(d,j){d.setAttribute('aria-current',j===i?'true':'false')});document.body.classList.toggle('on-night',s.classList.contains('night'));try{if(location.hash!=='#'+s.id)history.replaceState(null,'','#'+s.id)}catch(e){}}
+setCur(startIdx);
+if('IntersectionObserver' in window){var io=new IntersectionObserver(function(es){es.forEach(function(e){if(e.isIntersecting){var i=slides.indexOf(e.target);if(i>-1)setCur(i)}})},{rootMargin:'-49% 0px -49% 0px'});slides.forEach(function(s){io.observe(s)})}
+function go(i){i=Math.max(0,Math.min(total-1,i));slides[i].scrollIntoView({behavior:reduce?'auto':'smooth',block:'start'})}
+$('#prev').addEventListener('click',function(){go(cur-1)});
+$('#next').addEventListener('click',function(){go(cur+1)});
+document.addEventListener('keydown',function(e){
+  if(e.defaultPrevented||e.metaKey||e.ctrlKey||e.altKey)return;
+  var t=e.target;if(t&&t.closest&&t.closest('input,textarea,select,[contenteditable="true"]'))return;
+  var fits=slides[cur]&&slides[cur].offsetHeight<=window.innerHeight+8,k=e.key;
+  if(k==='ArrowRight'||k==='PageDown'||(k==='ArrowDown'&&fits)){e.preventDefault();go(cur+1)}
+  else if(k==='ArrowLeft'||k==='PageUp'||(k==='ArrowUp'&&fits)){e.preventDefault();go(cur-1)}
+  else if(k===' '&&!(t&&t.closest&&t.closest('button,a,[role="switch"],[role="radio"]'))){if(fits){e.preventDefault();go(cur+(e.shiftKey?-1:1))}}
+  else if(k==='Home'){e.preventDefault();go(0)}
+  else if(k==='End'){e.preventDefault();go(total-1)}
+});
+
+/* ---------- Bloque 1 ---------- */
+var sums={
+  wa:'<b>En una frase:</b> para personas. Gratis y sin herramientas de negocio.',
+  app:'<b>En una frase:</b> para pymes que atienden uno a uno desde el celular. Gratis, con perfil de empresa, catálogo y respuestas rápidas.',
+  api:'<b>En una frase:</b> para empresas que necesitan muchos agentes, bots, campañas e integraciones. No tiene app propia: siempre va con una plataforma como Atom.'
+};
+segGroup('#cmp-seg',function(v){$('#cmp').dataset.sel=v;var p=$('#cmp-sum');p.innerHTML=sums[v];swap(p.parentElement)});
+
+var fd={
+  usuario:['Usuario','Escribe desde su WhatsApp de siempre. No instala nada ni sabe qué plataforma hay detrás.'],
+  meta:['Meta','La Cloud API recibe y entrega cada mensaje, aplica límites y calidad, y cobra por plantilla. La versión On-Premises ya se retiró.'],
+  proveedor:['Proveedor','Conecta al negocio con la API. El BSP (como Atom) además factura y da soporte; el Tech Provider construye encima y el cliente le paga directo a Meta.'],
+  negocio:['Negocio','Ve todo en su CRM, bot o bandeja de agentes. Es dueño del número y de su perfil.']
+};
+$$('#flow .node').forEach(function(n){n.addEventListener('click',function(){$$('#flow .node').forEach(function(x){x.setAttribute('aria-pressed',x===n?'true':'false')});var d=fd[n.dataset.k],el=$('#flow-detail');el.innerHTML='<strong>'+d[0]+'</strong><br>'+d[1]+'<div class="meta">ahora '+TICKS+'</div>';swap(el)})});
+
+/* ---------- Bloque 2 ---------- */
+segGroup('#pz-seg',function(v){var a=$('#pz-ahora'),b=$('#pz-antes');a.hidden=v!=='ahora';b.hidden=v!=='antes';swap(v==='ahora'?a:b)});
+var qd={
+  alta:[60,'<b>Alta (verde):</b> todo bien. Si mantienes volumen, Meta te sube de nivel de límite automáticamente.'],
+  media:[0,'<b>Media (amarillo):</b> señal de alerta. Revisa a quién le escribes y con qué frecuencia antes de que baje más.'],
+  baja:[-60,'<b>Baja (rojo):</b> muchos bloqueos o reportes. Meta puede pausar plantillas y no subirte de nivel; hay que corregir rápido.']
+};
+segGroup('#q-seg',function(v){$('#needle').style.transform='rotate('+qd[v][0]+'deg)';var p=$('#q-txt');p.innerHTML=qd[v][1];swap(p)});
+
+/* ---------- Bloque 3 ---------- */
+var esLis=$$('#es-steps li'),esI=0;
+function esStep(){esLis.forEach(function(li,i){li.classList.toggle('on',i===esI);li.classList.toggle('done',i<esI)});$('#es-bar').style.setProperty('--w',((esI+1)/esLis.length*100)+'%')}
+if(!reduce&&esLis.length){setInterval(function(){esI=(esI+1)%esLis.length;esStep()},1900)}
+
+var STEPS=[
+  {t:'Portafolio verificado',c:'business.facebook.com › Centro de seguridad',d:'Crea o usa el portafolio del negocio y completa la verificación con documentos de la empresa.',tip:'Sin verificar, los envíos que inicia el negocio quedan muy limitados.'},
+  {t:'App de Meta',c:'developers.facebook.com › Mis apps › Crear app',d:'Crea una app tipo Business y agrega el producto WhatsApp. Meta te da un número de prueba para practicar.',tip:'Con el número de prueba solo puedes escribir a unos pocos números autorizados.'},
+  {t:'Número real',c:'WhatsApp Manager › Números de teléfono',d:'Agrega el número, el nombre visible y la categoría del negocio. Llega un código por SMS o llamada para verificarlo.',tip:'El número no puede estar activo en la app, salvo que uses coexistencia.'},
+  {t:'Token permanente',c:'Configuración del negocio › Usuarios del sistema',d:'Crea un usuario de sistema, asígnale la app y la cuenta de WhatsApp, y genera su token con los permisos whatsapp_business_messaging y whatsapp_business_management.',tip:'El token temporal del panel caduca en 24 h; no sirve para producción.'},
+  {t:'Webhook',c:'Tu app › WhatsApp › Configuración',d:'Pon la URL de callback y el token de verificación. Suscribe el campo messages para recibir mensajes y estados de entrega.',tip:'Responde 200 de inmediato para que Meta no reenvíe duplicados.'},
+  {t:'Registro y pago',c:'POST /{phone-number-id}/register · WhatsApp Manager › Pagos',d:'Registra el número en la Cloud API y agrega un método de pago en WhatsApp Manager.',tip:'La llamada de registro aún pide un PIN de 6 dígitos.'},
+  {t:'Plantilla y prueba',c:'WhatsApp Manager › Plantillas de mensajes',d:'Crea una plantilla, espera la aprobación y manda el primer mensaje por la API.',tip:'Si el cliente te escribe primero, puedes contestar con texto libre durante 24 h.'}
+];
+var stepsEl=$('#steps'),panel=$('#step-panel'),si=0,auto=null;
+STEPS.forEach(function(s,i){var li=document.createElement('li');li.innerHTML='<button class="step-btn" type="button"><span class="num">'+(i+1)+'</span><strong>'+s.t+'</strong></button>';li.firstChild.addEventListener('click',function(){stopAuto();showStep(i)});stepsEl.appendChild(li)});
+function stopAuto(){if(auto){clearInterval(auto);auto=null}}
+function showStep(i){
+  si=i;$$('.step-btn',stepsEl).forEach(function(b,j){b.classList.toggle('done',j<i);if(j===i){b.setAttribute('aria-current','step')}else{b.removeAttribute('aria-current')}});
+  var s=STEPS[i];
+  panel.innerHTML='<span class="tag">Paso '+(i+1)+' de '+STEPS.length+'</span><h3>'+s.t+'</h3><span class="crumb">'+s.c+'</span><p>'+s.d+'</p><div class="callout warn"><svg class="ic"><use href="#i-alert"/></svg><p>'+s.tip+'</p></div><div class="bar"><i style="--w:'+((i+1)/STEPS.length*100)+'%"></i></div><div class="row"><button class="btn sm" type="button" data-a="prev"'+(i===0?' disabled':'')+'>Anterior</button><button class="btn sm primary" type="button" data-a="next">'+(i===STEPS.length-1?'Volver al paso 1':'Siguiente')+'</button><button class="btn sm" type="button" data-a="auto" aria-pressed="'+(auto?'true':'false')+'"><svg class="ic"><use href="#i-play"/></svg>'+(auto?'Pausar':'Reproducir')+'</button></div>';
+  swap(panel);
+}
+panel.addEventListener('click',function(e){var b=e.target.closest('button[data-a]');if(!b)return;var a=b.dataset.a;
+  if(a==='prev'){stopAuto();showStep(Math.max(0,si-1))}
+  else if(a==='next'){stopAuto();showStep((si+1)%STEPS.length)}
+  else if(a==='auto'){if(auto){stopAuto();showStep(si)}else{auto=setInterval(function(){showStep((si+1)%STEPS.length)},3800);showStep(si)}}
+});
+showStep(0);
+
+var chks=$$('#checks .chk'),ringFg=$('#ring-fg'),C=163.4;
+function updRing(){var n=chks.filter(function(c){return c.getAttribute('aria-pressed')==='true'}).length;ringFg.setAttribute('stroke-dashoffset',String(C-C*n/chks.length));$('#ring-n').textContent=n+' / '+chks.length}
+chks.forEach(function(c){c.addEventListener('click',function(){c.setAttribute('aria-pressed',c.getAttribute('aria-pressed')==='true'?'false':'true');updRing()})});
+updRing();
+
+/* ---------- Bloque 4 ---------- */
+var feats=$$('#feats .feat'),fNames={lost:'se pierden o se apagan',chg:'cambian',ok:'siguen funcionando'};
+segGroup('#f-seg',function(v){var n=0;feats.forEach(function(f){var show=(v==='all'||f.dataset.k===v);f.hidden=!show;if(show){n++;swap(f)}});$('#f-count').textContent=v==='all'?n+' funciones':n+' '+fNames[v]});
+
+var sws=$$('#qs .sw');
+function diag(){
+  var sc=0;sws.forEach(function(s){var on=s.getAttribute('aria-checked')==='true';sc+=on?Number(s.dataset.w||0):Number(s.dataset.no||0)});
+  var x=(Math.max(-4,Math.min(3,sc))+4)/7*100;$('#scale i').style.setProperty('--x',x+'%');
+  var t,d;
+  if(sc>=1){t='Coexistencia';d='Conserva su número y sus chats, y suma bot o CRM sin cambiar sus hábitos.'}
+  else if(sc<=-1){t='Solo API';d='Por volumen o por cómo trabaja el equipo, conviene un número dedicado a la API.'}
+  else{t='Depende';d='Hay argumentos para ambos lados. Vale la pena platicarlo con el cliente.'}
+  $('#v-title').textContent=t;$('#v-text').textContent=d;
+}
+sws.forEach(function(s){s.addEventListener('click',function(){s.setAttribute('aria-checked',s.getAttribute('aria-checked')==='true'?'false':'true');diag()})});
+diag();
+
+/* ---------- Bloque 5: simulador ---------- */
+var SIM0=[{t:2,w:'c'},{t:10,w:'c'},{t:14,w:'b'}];
+var ev=SIM0.slice(),now=28,dyn=$('#tl-dyn'),range=$('#sim-now'),logEl=$('#sim-log'),logs=[];
+function fmt(h){var m=Math.round((8+h)*60),d=Math.floor(m/1440),hh=Math.floor((m%1440)/60),mm=m%60;return ['Lun','Mar','Mié'][d]+' '+pad(hh)+':'+pad(mm)}
+function pct(h){return (h/36*100)+'%'}
+function lastClient(){var l=null;ev.forEach(function(e){if(e.w==='c'&&e.t<=now&&(l===null||e.t>l))l=e.t});return l}
+function isOpen(){var l=lastClient();return l!==null&&now<l+24}
+function render(){
+  var html='',sorted=ev.slice().sort(function(a,b){return a.t-b.t});
+  sorted.forEach(function(e){if(e.w==='c'){var w=Math.min(24,36-e.t);html+='<div class="win" style="left:'+pct(e.t)+';width:'+(w/36*100)+'%"></div>'}});
+  var last={c:-99,b:-99};
+  sorted.forEach(function(e){var quiet=(e.t-last[e.w])<3;last[e.w]=e.t;html+='<div class="ev '+e.w+(quiet?' quiet':'')+'" style="left:'+pct(e.t)+'"><span>'+fmt(e.t).slice(4)+'</span><i></i></div>'});
+  dyn.innerHTML=html;
+  $('#tl-now').style.left=pct(now);$('#tl-now-l').textContent=fmt(now);$('#sim-now-l').textContent=fmt(now);
+  var l=lastClient(),st=$('#sim-status');
+  if(isOpen()){var rem=l+24-now,hh=Math.floor(rem),mm=Math.round((rem-hh)*60);if(mm===60){hh++;mm=0}st.className='status open';st.innerHTML='<span class="chip ok">Abierta</span><span>Quedan '+hh+' h '+pad(mm)+' min · cierra '+fmt(l+24)+'</span>'}
+  else{st.className='status closed';st.innerHTML='<span class="chip lost">Cerrada</span><span>'+(l===null?'El cliente aún no ha escrito':'Cerró '+fmt(l+24))+' · solo plantillas</span>'}
+}
+function log(text,out,err){logs.push({text:text,out:out,err:err,at:fmt(now).slice(4)});if(logs.length>2)logs.shift();logEl.innerHTML=logs.map(function(l){return '<div class="bubble'+(l.out?' out':'')+(l.err?' err':'')+'">'+l.text+'<div class="meta">'+l.at+(l.out&&!l.err?' '+TICKS:'')+'</div></div>'}).join('');swap(logEl.lastElementChild)}
+range.addEventListener('input',function(){now=parseFloat(range.value);render()});
+$('#sim-client').addEventListener('click',function(){if(!ev.some(function(e){return e.w==='c'&&Math.abs(e.t-now)<0.01}))ev.push({t:now,w:'c'});render();log('Cliente: «Hola, ¿me ayudan con mi pedido?»',false,false)});
+$('#sim-free').addEventListener('click',function(){if(isOpen()){ev.push({t:now,w:'b'});render();log('Texto libre enviado. Es gratis y la ventana no se movió.',true,false)}else{log('<b>Error 131047:</b> pasaron más de 24 h desde el último mensaje del cliente. Usa una plantilla.',true,true)}});
+$('#sim-tpl').addEventListener('click',function(){var open=isOpen();ev.push({t:now,w:'b'});render();log(open?'Plantilla enviada. Dentro de la ventana, una de utilidad es gratis.':'Plantilla enviada. Se cobra según su categoría; la ventana se abre cuando el cliente conteste.',true,false)});
+$('#sim-reset').addEventListener('click',function(){ev=SIM0.slice();now=28;range.value='28';logs=[];logEl.innerHTML='';render()});
+render();
+
+$$('#matrix .cell').forEach(function(c){c.addEventListener('click',function(){$$('#matrix .cell').forEach(function(x){x.setAttribute('aria-pressed',x===c?'true':'false')});var d=$('#mx-detail');d.innerHTML=c.dataset.t+'<div class="meta">precios '+TICKS+'</div>';swap(d)})});
+
+/* ---------- Bloque 6 ---------- */
+segGroup('#cat-seg',function(v){$$('#plantillas [data-cat]').forEach(function(el){var show=el.dataset.cat===v;el.hidden=!show;if(show)swap(el)})});
+function hot(p,v){$$('#anatomia [data-part="'+p+'"]').forEach(function(x){x.classList.toggle('hot',v)})}
+$$('#anatomia [data-part]').forEach(function(el){var p=el.dataset.part;
+  el.addEventListener('mouseenter',function(){hot(p,true)});el.addEventListener('mouseleave',function(){hot(p,false)});
+  el.addEventListener('focus',function(){hot(p,true)});el.addEventListener('blur',function(){hot(p,false)});
+  el.addEventListener('click',function(){$$('#anatomia .hot').forEach(function(x){x.classList.remove('hot')});hot(p,true)});
+});
+var SD={
+  borrador:['Borrador','La creas en WhatsApp Manager o por API: nombre, idioma, categoría y contenido.'],
+  revision:['En revisión','Meta revisa contenido y categoría. Normalmente tarda minutos; como máximo 24 h.'],
+  aprobada:['Aprobada','Lista para enviar. Desde aquí Meta mide su calidad con la reacción de los usuarios.'],
+  pausada:['Pausada','Si la calidad baja, Meta la pausa: 3 h la primera vez y 6 h la segunda.'],
+  desactivada:['Desactivada','A la tercera pausa se desactiva y hay que crear una nueva.'],
+  rechazada:['Rechazada','No cumple las políticas o la categoría no corresponde. Se corrige y se vuelve a enviar a revisión.']
+};
+var states=$$('#states .state'),sIdx=0,sTimer=null;
+function showState(i){sIdx=i;states.forEach(function(b,j){b.setAttribute('aria-pressed',j===i?'true':'false')});var d=SD[states[i].dataset.k],el=$('#state-detail');el.innerHTML='<strong>'+d[0]+'</strong><br>'+d[1]+'<div class="meta">estado '+TICKS+'</div>';swap(el)}
+states.forEach(function(b,i){b.addEventListener('click',function(){if(sTimer){clearInterval(sTimer);sTimer=null}showState(i)})});
+if(!reduce){sTimer=setInterval(function(){if(slides[cur]&&slides[cur].id==='ciclo')showState((sIdx+1)%states.length)},2600)}
+
+var errs=$$('#errs .err'),eq=$('#err-q');
+eq.addEventListener('input',function(){var v=eq.value.trim().toLowerCase(),n=0;errs.forEach(function(e){var show=!v||e.textContent.toLowerCase().indexOf(v)>-1;e.hidden=!show;if(show)n++});$('#err-count').textContent=n===0?'Sin resultados. Prueba con «24 h», «plantilla» o un código.':n+' de '+errs.length+' códigos'});
+
+/* ---------- Bloque 7: demo de Flow ---------- */
+var F={sucursal:'Centro',fecha:'Mar 17 nov',horario:'12:00'},ISO={'Lun 16 nov':'2026-11-16','Mar 17 nov':'2026-11-17','Mié 18 nov':'2026-11-18'};
+function k(s){return '<span class="k">"'+s+'"</span>'}
+function sv(s){return '<span class="s">"'+s+'"</span>'}
+function renderJson(flash){
+  var rj='"{\\"sucursal\\":\\"<mark>'+F.sucursal+'</mark>\\",\\"fecha\\":\\"<mark>'+ISO[F.fecha]+'</mark>\\",\\"horario\\":\\"<mark>'+F.horario+'</mark>\\",\\"flow_token\\":\\"cita-123\\"}"';
+  var out='{\n  '+k('from')+': '+sv('5215555550123')+',\n  '+k('type')+': '+sv('interactive')+',\n  '+k('interactive')+': {\n    '+k('type')+': '+sv('nfm_reply')+',\n    '+k('nfm_reply')+': {\n      '+k('name')+': '+sv('flow')+',\n      '+k('body')+': '+sv('Sent')+',\n      '+k('response_json')+': <span class="s">'+rj+'</span>\n    }\n  }\n}';
+  var pre=$('#fjson');pre.innerHTML=out;
+  if(flash){pre.classList.remove('flash');void pre.offsetWidth;pre.classList.add('flash')}
+}
+$$('#flowdemo [role="radiogroup"]').forEach(function(g){$$('[role="radio"]',g).forEach(function(r){r.addEventListener('click',function(){$$('[role="radio"]',g).forEach(function(x){x.setAttribute('aria-checked',x===r?'true':'false')});F[g.dataset.k]=r.dataset.v;renderJson(false)})})});
+function showScreen(n){['fs1','fs2','fs3'].forEach(function(id,i){$('#'+id).hidden=(i+1)!==n});swap($('#fs'+n))}
+$('#f-next').addEventListener('click',function(){$('#f-sum').innerHTML='<li><span>Sucursal</span><b>'+F.sucursal+'</b></li><li><span>Fecha</span><b>'+F.fecha+'</b></li><li><span>Horario</span><b>'+F.horario+'</b></li>';showScreen(2)});
+$('#f-back').addEventListener('click',function(){showScreen(1)});
+$('#f-send').addEventListener('click',function(){$('#f-reply').textContent='Cita en '+F.sucursal+', '+F.fecha+' a las '+F.horario;showScreen(3);renderJson(true)});
+$('#f-again').addEventListener('click',function(){showScreen(1)});
+renderJson(false);
+
+/* ---------- Bloque 8 ---------- */
+segGroup('#mig-seg',function(v){$('#mig').className='mig '+v+' rv';$$('#migracion [data-mig]').forEach(function(el){var show=el.dataset.mig===v;el.hidden=!show;if(show)swap(el)})});
+
+/* ---------- Práctica ---------- */
+$$('.flip').forEach(function(b){b.addEventListener('click',function(){b.setAttribute('aria-pressed',b.getAttribute('aria-pressed')==='true'?'false':'true')})});
+})();
+</script>
+</body>
+</html>
